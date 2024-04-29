@@ -1,0 +1,7 @@
+{
+	"OutputFiles": [
+		"..\\..\\..\\x64\\UnrealGame\\Development\\LightAwareness\\Module.LightAwareness.cpp.obj",
+		"..\\..\\..\\x64\\UnrealGame\\Development\\LightAwareness\\LightAwareness.cpp.obj",
+		"..\\..\\..\\x64\\UnrealGame\\Development\\LightAwareness\\LightAwarenessComponent.cpp.obj"
+	]
+}

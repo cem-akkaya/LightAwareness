@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "LightAwareness",
+	"Description": "Standalone Lightweight Light Detection System",
+	"Category": "Other",
+	"CreatedBy": "Cem Akkaya",
+	"CreatedByURL": "http://www.cemakkaya.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.4.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "LightAwareness",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
