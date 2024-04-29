@@ -75,16 +75,16 @@ Install it like any other Unreal Engine plugin.
 <details>
 <summary><b>From Which gameplay objects can I get light status? </b></summary>
 
-> From any object that is existing in the level, you can get a light status value.\
+> From any object that is existing in the level, you can get a light status value.
 > If you didn't attach the component, you can simply spawn an actor at location and attach the component in runtime and destroy.\
 </details>
 
 <details>
 <summary><b>How reliable is the detection method? </b></summary>
 
-> Depends on what settings you use to get buffer pixels and calculate them.\
+> Depends on what settings you use to get buffer pixels and calculate them.
 > Default settings are quite reliable on many levels and can be used for stealth games as well as other utilization purposes.\
-> With default settings 32 Pixels are brute force searched and brightest pixel returned on tick.\
+> With default settings 32 Pixels are brute force searched and brightest pixel returned on tick.
 > This is more than enough for getting an average light, however its recommended to do top direction pass if its not needed in your game.\
 
 </details>
@@ -93,7 +93,7 @@ Install it like any other Unreal Engine plugin.
 <summary><b>Can I get light from Emissive and Other sources?</b></summary>
 
 > Yes you can. There is a "Global Illumination" option where environmental light effects are also included in light detection.\
-> However Lumen in scene renders for small image sizes can have small value jumps in extreme light condition changes.\
+> However Lumen in scene renders for small image sizes can have small value jumps in extreme light condition changes.
 
 </details>
 
