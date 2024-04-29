@@ -1,7 +1,7 @@
 ﻿# Light Awareness Plugin
 
 [![Plugin version number](https://img.shields.io/github/v/release/cem-akkaya/LightAwareness?label=Version)](https://github.com/cem-akkaya/LightAwareness/releases/latest)
-[![Unreal Engine Supported Versions](https://img.shields.io/badge/Unreal_Engine-5.0_%7C_5.1_%7C_5.2_%7C_5.3-9455CE?logo=unrealengine)](https://github.com/cem-akkaya/LightAwareness/releases)
+[![Unreal Engine Supported Versions](https://img.shields.io/badge/Unreal_Engine-5.0_%7C_5.1_%7C_5.2_%7C_5.3_%7C_5.4-9455CE?logo=unrealengine)](https://github.com/cem-akkaya/LightAwareness/releases)
 [![License](https://img.shields.io/github/license/cem-akkaya/LightAwareness)](LICENSE)
 ![Download count](https://img.shields.io/github/downloads/cem-akkaya/LightAwareness/total?label=Downloads)
 [![Actively Maintained](https://img.shields.io/badge/Maintenance%20Level-Actively%20Maintained-green.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)
