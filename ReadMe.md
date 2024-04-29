@@ -38,7 +38,7 @@ If you want to contribute, feel free to create a pull request.
 
 ## Examples
 
-Some hand-made rooms defined with bounds and doors:\
+Some passages defined with various light sources and and dark zones:\
 <img src="https://cemakkaya.com/ImageHost/example1.gif" alt="Animated GIF" width="200"/>
 <img src="https://cemakkaya.com/ImageHost/example2.gif" alt="Animated GIF" width="200"/>
 <img src="https://cemakkaya.com/ImageHost/example3.gif" alt="Animated GIF" width="200"/>
