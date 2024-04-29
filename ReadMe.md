@@ -14,8 +14,8 @@
 This is an Unreal Engine plugin to detect light conditions on any actor independent from Light Source Type, Screen Effects and similar.
 
 This plugin is an actor component where snapshots a buffer image from the world with given variables. Process the buffer
-image pixels from the memory and brute forces the brightest pixel in the light gem. This plugin is created on ingenious method of Dark Mod indie game,
-re-creating approach in a more accurate calculation in Unreal 5+.
+image pixels from the memory and brute forces the brightest pixel in the light gem. This plugin is created on ingenious method of [Dark Mod](https://www.thedarkmod.com/main/) indie game,
+re-creating approach in a more accurate calculation in Unreal 5+. 
 
 You can define the processing method and efficiency on the component and on the blueprint level depending on the usage.
 You define your own rules in blueprints or C++ to get light status from the component or you can get the buffer image array on the tick to process further calculations
