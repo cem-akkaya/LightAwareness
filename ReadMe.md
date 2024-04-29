@@ -55,7 +55,7 @@ Some examples of light awareness plugin in action:
 <img src="https://cemakkaya.com/ImageHost/plugin.jpg" alt="plugin-light-awareness" width="830"/>
 
 Install it like any other Unreal Engine plugin.
-- Download and place LightAwareness Plugin under  : Engine\Plugins
+- Download and place LightAwareness Plugin under  : Drive:\UE\Engine\Plugins\Marketplace\LightAwareness
 - Activate the plugin in your project plugins.
 - On your actor add component "LightAwareness".
 - Drag a pin from component to see available functions.
