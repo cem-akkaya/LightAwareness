@@ -1,4 +1,4 @@
-﻿// Light Awareness System. Cem Akkaya http://www.cemakkaya.com
+﻿// Light Awareness System. Cem Akkaya https://www.cemakkaya.com
 
 #pragma once
 
@@ -13,16 +13,16 @@
 #include "Materials/Material.h"
 #include "LightAwarenessComponent.generated.h"
 
-UENUM(BlueprintType)
-enum FLightAwarenessSensitivity : uint8
+UENUM()
+enum FLightAwarenessSensitivity : int
 {
 	Optimized UMETA(DisplayName = "Optimized Sensitivity"),
 	Low UMETA(DisplayName = "Low Sensitivity"),
 	High UMETA(DisplayName = "High Sensitivity"),
 };
 
-UENUM(BlueprintType)
-enum FLightAwarenessDetectionMethod : uint8
+UENUM()
+enum FLightAwarenessDetectionMethod : int
 {
 	Single UMETA(DisplayName = "Top Directional"),
 	Double UMETA(DisplayName = "Top & Bottom Directional"),
@@ -52,6 +52,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
 	bool LightAwarenessGI;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
+	bool LightAwarenessFallback;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightAwarenessMaterialSensitivity = 1;
 	
@@ -150,7 +153,6 @@ protected:
 	// Buffer Image
 	TArray<FColor> BufferImage;
 
-	
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,

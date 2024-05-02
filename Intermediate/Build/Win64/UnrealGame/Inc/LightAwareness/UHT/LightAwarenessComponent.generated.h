@@ -15,7 +15,7 @@ struct FColor;
 #endif
 #define LIGHTAWARENESS_LightAwarenessComponent_generated_h
 
-#define FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
 	DECLARE_FUNCTION(execSetLightSensitivity); \
 	DECLARE_FUNCTION(execGetBufferPixels); \
 	DECLARE_FUNCTION(execGetLightStatus); \
@@ -23,7 +23,7 @@ struct FColor;
 	DECLARE_FUNCTION(execHideLightDetector);
 
 
-#define FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
 private: \
 	static void StaticRegisterNativesULightAwarenessComponent(); \
 	friend struct Z_Construct_UClass_ULightAwarenessComponent_Statics; \
@@ -32,7 +32,7 @@ public: \
 	DECLARE_SERIALIZER(ULightAwarenessComponent)
 
 
-#define FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
 private: \
 	/** Private move- and copy-constructors, should never be used */ \
 	ULightAwarenessComponent(ULightAwarenessComponent&&); \
@@ -44,13 +44,13 @@ public: \
 	NO_API virtual ~ULightAwarenessComponent();
 
 
-#define FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_31_PROLOG
-#define FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_GENERATED_BODY \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_31_PROLOG
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_GENERATED_BODY \
 PRAGMA_DISABLE_DEPRECATION_WARNINGS \
 public: \
-	FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
-	FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
-	FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
 private: \
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
@@ -58,7 +58,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 template<> LIGHTAWARENESS_API UClass* StaticClass<class ULightAwarenessComponent>();
 
 #undef CURRENT_FILE_ID
-#define CURRENT_FILE_ID FID_LightAwareness_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h
+#define CURRENT_FILE_ID FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h
 
 
 #define FOREACH_ENUM_FLIGHTAWARENESSSENSITIVITY(op) \
@@ -66,14 +66,14 @@ template<> LIGHTAWARENESS_API UClass* StaticClass<class ULightAwarenessComponent
 	op(Low) \
 	op(High) 
 
-enum FLightAwarenessSensitivity : uint8;
+enum FLightAwarenessSensitivity : int;
 template<> LIGHTAWARENESS_API UEnum* StaticEnum<FLightAwarenessSensitivity>();
 
 #define FOREACH_ENUM_FLIGHTAWARENESSDETECTIONMETHOD(op) \
 	op(Single) \
 	op(Double) 
 
-enum FLightAwarenessDetectionMethod : uint8;
+enum FLightAwarenessDetectionMethod : int;
 template<> LIGHTAWARENESS_API UEnum* StaticEnum<FLightAwarenessDetectionMethod>();
 
 PRAGMA_ENABLE_DEPRECATION_WARNINGS

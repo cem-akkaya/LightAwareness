@@ -1,5 +1,4 @@
-﻿// Light Awareness System. Cem Akkaya http://www.cemakkaya.com
-
+﻿// Light Awareness System. Cem Akkaya https://www.cemakkaya.com
 
 #include "LightAwarenessComponent.h"
 #include "GameFramework/Actor.h"
@@ -10,7 +9,6 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
-
 
 ULightAwarenessComponent::ULightAwarenessComponent()
 {
@@ -163,8 +161,6 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 {
 	//Setup Scene Capture
 	sceneCaptureComponents->SetRelativeRotation(Rotation);
-	sceneCaptureComponents->SetRelativeLocation(Location);
-	sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Orthographic;
 	sceneCaptureComponents->SetMobility(EComponentMobility::Movable);
 	sceneCaptureComponents->bCaptureEveryFrame = false;
 	sceneCaptureComponents->SetHiddenInGame(false);
@@ -193,6 +189,20 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->TextureTarget->ClearColor = FColor::Black;
 	sceneCaptureComponents->TextureTarget->CompressionSettings = TC_VectorDisplacementmap;
 	sceneCaptureComponents->TextureTarget->SRGB = 0;
+
+	// Engine Fallback
+	if (LightAwarenessFallback)
+	{
+		// Scene Capture under 5.2 Orthographic is problematic generally not rendering shadows at all as known issue.
+		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Perspective;
+		auto CompansatedLoc =Location/2;
+		sceneCaptureComponents->SetRelativeLocation(CompansatedLoc);
+	}
+	else
+	{
+		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Orthographic;
+		sceneCaptureComponents->SetRelativeLocation(Location);
+	}
 	
 #if WITH_EDITORONLY_DATA
 	sceneCaptureComponents->TextureTarget->MipGenSettings = TMGS_NoMipmaps;

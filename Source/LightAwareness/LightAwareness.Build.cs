@@ -1,5 +1,6 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Light Awareness System. Cem Akkaya https://www.cemakkaya.com
 
+using System.IO;
 using UnrealBuildTool;
 
 public class LightAwareness : ModuleRules
@@ -10,7 +11,7 @@ public class LightAwareness : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
-				// ... add public include paths required here ...
+				Path.Combine(PluginDirectory,"Content"),
 			}
 			);
 				

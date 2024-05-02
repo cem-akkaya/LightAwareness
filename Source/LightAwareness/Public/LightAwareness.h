@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Light Awareness System. Cem Akkaya https://www.cemakkaya.com
 
 #pragma once
 

@@ -6,11 +6,10 @@
 	"Description": "Standalone Lightweight Light Detection System",
 	"Category": "Other",
 	"CreatedBy": "Cem Akkaya",
-	"CreatedByURL": "http://www.cemakkaya.com",
+	"CreatedByURL": "https://www.cemakkaya.com",
 	"DocsURL": "",
 	"MarketplaceURL": "",
-	"SupportURL": "",
-	"EngineVersion": "5.4.0",
+	"SupportURL": "https://www.cemakkaya.com\"",
 	"CanContainContent": true,
 	"Installed": true,
 	"Modules": [

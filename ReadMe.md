@@ -69,6 +69,7 @@ Install it like any other Unreal Engine plugin.
 - Define the light gem using components scaling and offsets to your needs.
 - Define sensitivity and method as you need.
 - Call "Get Light Status" function to snapshot light level on object.
+- Engine Versions Under 5.2 Should use "Light Awareness Fallback = true"
 
 
 ## FAQ
