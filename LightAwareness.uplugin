@@ -9,14 +9,15 @@
 	"CreatedByURL": "https://www.cemakkaya.com",
 	"DocsURL": "",
 	"MarketplaceURL": "",
-	"SupportURL": "https://www.cemakkaya.com\"",
+	"SupportURL": "",
+	"EngineVersion": "5.4.0",
 	"CanContainContent": true,
 	"Installed": true,
 	"Modules": [
 		{
 			"Name": "LightAwareness",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		}
 	]
 }

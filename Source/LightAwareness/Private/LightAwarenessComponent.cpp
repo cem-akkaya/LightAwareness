@@ -6,8 +6,11 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TextureResource.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetRenderingLibrary.h"
 #include "UObject/ConstructorHelpers.h"
 
 ULightAwarenessComponent::ULightAwarenessComponent()
@@ -15,7 +18,9 @@ ULightAwarenessComponent::ULightAwarenessComponent()
 	// Component Settings
 	PrimaryComponentTick.bCanEverTick = true;
 	UActorComponent::SetAutoActivate(true);
-
+	SetIsReplicatedByDefault(false);
+	SetIsReplicated(false);
+	
 	// Component Add Tag
 	this->ComponentTags.Add(FName("LightAwarenessResponder"));
 
@@ -67,15 +72,31 @@ void ULightAwarenessComponent::BeginPlay()
 	}
 
 	// Get image buffer processing area
-	SetLightSensitivity();
+	SetLightSensitivity(LightAwarenessSensitivity);
 
 	// Hide possible other components interfering buffer image
 	SetupOwnerOtherComponents();
+
+	// If user prefers setup new render targets that are replicated
+	if (LightAwarenessIsReplicatedRenderTargets)
+	{
+		// Create A New Render Target Top
+		UTextureRenderTarget2D* LARenderTargetTop = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_R8);
+		sceneCaptureComponentTop->TextureTarget = LARenderTargetTop;
+
+		// Create A New Render Target Top
+		UTextureRenderTarget2D* LARenderTargetBottom = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_R8);
+		sceneCaptureComponentBottom->TextureTarget = LARenderTargetBottom;
+	}
 	
 	// Be sure that the component visibility are set in runtime
 	LightAwarenessMesh->SetVisibility(true);
 	LightAwarenessMesh->SetVisibleInSceneCaptureOnly(true);
 	LightAwarenessMesh->SetHiddenInSceneCapture(false);
+	
+	// Ensure Settings
+	FTimerHandle SettingsTimer;
+	GetWorld()->GetTimerManager().SetTimer(SettingsTimer, this, &ULightAwarenessComponent::UpdateSettings, 1.0f, false);
 }
 
 void ULightAwarenessComponent::SetupOwnerOtherComponents() const
@@ -146,20 +167,22 @@ void ULightAwarenessComponent::SetRenderMeshVisibility(bool Status) const
 
 void ULightAwarenessComponent::SetupSceneCapture()
 {
-	//Setup Scene Capture Top
+	// Setup Scene Capture Top
 	sceneCaptureComponentTop = NewObject <USceneCaptureComponent2D>(this,USceneCaptureComponent2D::StaticClass(), TEXT("LightAwarenessSceneCaptureTop(Created)"));
 	sceneCaptureComponentTop->AttachToComponent(LightAwarenessMesh, FAttachmentTransformRules::KeepRelativeTransform);
-	SetupSceneCaptureSettings(sceneCaptureComponentTop, LightAwarenessRenderTargetTop, FVector (0,0,150), FRotator (-90,0,0));
 
-	//Setup Scene Capture Bottom
+	// Setup Scene Capture Bottom
 	sceneCaptureComponentBottom = NewObject <USceneCaptureComponent2D>(this,USceneCaptureComponent2D::StaticClass(), TEXT("LightAwarenessSceneCaptureBottom(Created)"));
 	sceneCaptureComponentBottom->AttachToComponent(LightAwarenessMesh, FAttachmentTransformRules::KeepRelativeTransform);
+
+	// Use constructor defined target. This is generally OK for networking too if run in separate processes
+	SetupSceneCaptureSettings(sceneCaptureComponentTop, LightAwarenessRenderTargetTop, FVector (0,0,150), FRotator (-90,0,0));
 	SetupSceneCaptureSettings(sceneCaptureComponentBottom, LightAwarenessRenderTargetBottom, FVector (0,0,-150) ,FRotator (90,0,0));
 }
 
 void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2D* sceneCaptureComponents, UTextureRenderTarget2D* RenderTarget, const FVector& Location, const FRotator& Rotation) const
 {
-	//Setup Scene Capture
+	// Setup Scene Capture
 	sceneCaptureComponents->SetRelativeRotation(Rotation);
 	sceneCaptureComponents->SetMobility(EComponentMobility::Movable);
 	sceneCaptureComponents->bCaptureEveryFrame = false;
@@ -176,8 +199,8 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->CaptureSource = SCS_FinalColorLDR;
 	sceneCaptureComponents->TextureTarget = RenderTarget;
 	sceneCaptureComponents->bAlwaysPersistRenderingState = true;
-	sceneCaptureComponents->TextureTarget->SizeX = 16; // Min Effective Shadow Catcher size for any condition
-	sceneCaptureComponents->TextureTarget->SizeY = 16; // Min Effective Shadow Catcher size for any condition
+	sceneCaptureComponents->TextureTarget->SizeX = 16; // 16 Min Effective Shadow Catcher size for any condition
+	sceneCaptureComponents->TextureTarget->SizeY = 16; // 16 Min Effective Shadow Catcher size for any condition
 
 	// Enable Lumen For global illumination effects and reflections
 	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
@@ -195,7 +218,7 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	{
 		// Scene Capture under 5.2 Orthographic is problematic generally not rendering shadows at all as known issue.
 		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Perspective;
-		auto CompansatedLoc =Location/2;
+		auto CompansatedLoc = Location/2;
 		sceneCaptureComponents->SetRelativeLocation(CompansatedLoc);
 	}
 	else
@@ -216,6 +239,9 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 {
 	// Clear Buffer if any
 	BufferImage.Empty();
+
+	//Always Set rotation world to overcome value peaks regarding the method
+	LightAwarenessMesh->SetWorldRotation(FRotator(0.0f, 0.0f, 0.0f));
 	
 	// Enqueue Render Command to update texture resource depending on method
 	if (LightAwarenessMethod == Single)
@@ -257,7 +283,7 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 		BufferImage.Append(CurrentBufferTop);
 		BufferImage.Append(CurrentBufferBottom);
 		
-		return BufferImage ;;
+		return BufferImage;
 	}
 }
 
@@ -276,33 +302,32 @@ float ULightAwarenessComponent::GetLightStatus()
 			LightValue = AveragePixel;
 		}
 	}
-	return LightValue ;
+	return LightValue;
 }
 
-void ULightAwarenessComponent::SetLightSensitivity()
+void ULightAwarenessComponent::SetLightSensitivity(FLightAwarenessSensitivity Sensitivity)
 {
 	switch (LightAwarenessSensitivity)
 	{
 	case Optimized:
-		RenderWidth = RenderHeight = 8; // 32 Pixels Buffer Array
+		RenderWidth = RenderHeight = 8; // 64 Pixels Buffer Array
 		break;
 	case Low:
-		RenderWidth = RenderHeight = 4; // 8 Pixels Buffer Array
+		RenderWidth = RenderHeight = 4; // 16 Pixels Buffer Array
 		break;
 	case High:
-		RenderWidth = RenderHeight = 16; // 128  Pixels Buffer Array
+		RenderWidth = RenderHeight = 16; // 256  Pixels Buffer Array
 		break;
 	default:RenderWidth = RenderHeight = 8;
 		break;
 	}
 	
 	// Get Detail and Optimize Calculation of Brute Force
-	// Does not change the RT Buffer since under 16px shadows cannot be caught generally.
-	// Rather than changing fidelity, change the search area
-	YMin = RenderHeight/2 - RenderHeight/4;
-	YMax = RenderHeight/2 + RenderHeight/4;
-	XMin = RenderWidth/2 - RenderWidth/4;
-	XMax = RenderWidth/2 + RenderWidth/4;
+	// Removing borders for more responsive detection
+	YMin = 0;
+	YMax = RenderHeight;
+	XMin = 0;
+	XMax = RenderWidth;
 }
 
 void ULightAwarenessComponent::UpdateSettings() const
@@ -310,6 +335,10 @@ void ULightAwarenessComponent::UpdateSettings() const
 	LightAwarenessMesh->SetRelativeScale3D(FVector (1,1,1) * LightAwarenessDetectorScale);
 	LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
 	LightAwarenessMaterialDynamic->SetScalarParameterValue("MatSensitivity", LightAwarenessMaterialSensitivity);
+
+	sceneCaptureComponentTop->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
+	sceneCaptureComponentBottom->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
+
 	
 #if WITH_EDITOR
 	LightAwarenessMaterial->SetScalarParameterValueEditorOnly("MatSensitivity", LightAwarenessMaterialSensitivity);

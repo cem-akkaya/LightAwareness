@@ -7,6 +7,9 @@
 #include "Components/ActorComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
 #include "TextureResource.h"
@@ -54,8 +57,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
 	bool LightAwarenessFallback;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Replicate Render Targets")
+	bool LightAwarenessIsReplicatedRenderTargets;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightAwarenessMaterialSensitivity = 1;
 	
 	UFUNCTION(CallInEditor, Category="Light Awareness" , DisplayName="Hide Light Detector")
@@ -67,11 +73,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Status")
 	float GetLightStatus();
 
-	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Buffer")
+	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Get Light Buffer")
 	TArray<FColor> GetBufferPixels();
 	
-	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Set Light Sensivity")
-	void SetLightSensitivity();
+	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Set Light Sensivity")
+	void SetLightSensitivity(FLightAwarenessSensitivity Sensitivity);
 
 protected:
 	// Called when the game starts.

@@ -23,6 +23,9 @@ in blueprint or C++.
 
 If you are trying to integrate this component on a custom class, integrate on a parent that is actor or you can just create an actor with LightAwareness component and attach to your character.
 
+A demo with network enabled plugin in action can be found below link.
+[Light Awareness Demo UE5 Project](https://github.com/cem-akkaya/LightAwarenessDemo)
+
 If you have any bug or crash, please open an issue in the Github repo.\
 If you have suggestions, questions or need help to use you can always contact [me](https://github.com/cem-akkaya)<br>
 
@@ -73,6 +76,8 @@ Install it like any other Unreal Engine plugin.
 - Call "Get Light Status" function to snapshot light level on object.
 - Engine Versions Under 5.2 Should use "Engine Version Fallback = true"
 
+A demo with network enabled plugin in action can be found below link.
+[Light Awareness Demo UE5 Project](https://github.com/cem-akkaya/LightAwarenessDemo)
 
 ## FAQ
 <details>

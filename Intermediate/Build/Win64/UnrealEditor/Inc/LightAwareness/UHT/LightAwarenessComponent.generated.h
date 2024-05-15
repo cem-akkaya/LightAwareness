@@ -15,7 +15,7 @@ struct FColor;
 #endif
 #define LIGHTAWARENESS_LightAwarenessComponent_generated_h
 
-#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_RPC_WRAPPERS_NO_PURE_DECLS \
 	DECLARE_FUNCTION(execSetLightSensitivity); \
 	DECLARE_FUNCTION(execGetBufferPixels); \
 	DECLARE_FUNCTION(execGetLightStatus); \
@@ -23,7 +23,7 @@ struct FColor;
 	DECLARE_FUNCTION(execHideLightDetector);
 
 
-#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_INCLASS_NO_PURE_DECLS \
 private: \
 	static void StaticRegisterNativesULightAwarenessComponent(); \
 	friend struct Z_Construct_UClass_ULightAwarenessComponent_Statics; \
@@ -32,7 +32,7 @@ public: \
 	DECLARE_SERIALIZER(ULightAwarenessComponent)
 
 
-#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_ENHANCED_CONSTRUCTORS \
 private: \
 	/** Private move- and copy-constructors, should never be used */ \
 	ULightAwarenessComponent(ULightAwarenessComponent&&); \
@@ -44,13 +44,13 @@ public: \
 	NO_API virtual ~ULightAwarenessComponent();
 
 
-#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_31_PROLOG
-#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_GENERATED_BODY \
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_PROLOG
+#define FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_GENERATED_BODY \
 PRAGMA_DISABLE_DEPRECATION_WARNINGS \
 public: \
-	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_RPC_WRAPPERS_NO_PURE_DECLS \
-	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_INCLASS_NO_PURE_DECLS \
-	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_34_ENHANCED_CONSTRUCTORS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_RPC_WRAPPERS_NO_PURE_DECLS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_INCLASS_NO_PURE_DECLS \
+	FID_HostProject_Plugins_LightAwareness_Source_LightAwareness_Public_LightAwarenessComponent_h_37_ENHANCED_CONSTRUCTORS \
 private: \
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
