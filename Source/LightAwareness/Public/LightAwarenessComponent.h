@@ -16,19 +16,28 @@
 #include "Materials/Material.h"
 #include "LightAwarenessComponent.generated.h"
 
-UENUM()
-enum FLightAwarenessSensitivity : int
+UENUM(BlueprintType)
+enum class ELightAwarenessSensitivity : uint8
 {
 	Optimized UMETA(DisplayName = "Optimized Sensitivity"),
 	Low UMETA(DisplayName = "Low Sensitivity"),
 	High UMETA(DisplayName = "High Sensitivity"),
 };
 
-UENUM()
-enum FLightAwarenessDetectionMethod : int
+UENUM(BlueprintType)
+enum class ELightAwarenessDetectionMethod : uint8
 {
-	Single UMETA(DisplayName = "Top Directional"),
-	Double UMETA(DisplayName = "Top & Bottom Directional"),
+	Top UMETA(DisplayName = "Top Directional"),
+	Both UMETA(DisplayName = "Top & Bottom Directional"),
+	Bottom UMETA(DisplayName = "Bottom Directional"),
+};
+
+UENUM(BlueprintType)
+enum class ELightAwarenessState : uint8
+{
+	Inactive UMETA(DisplayName = "Inactive"),
+	Active UMETA(DisplayName = "Active"),
+	ActiveVisible UMETA(DisplayName = "ActiveRendered"),
 };
 
 UCLASS(Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -47,11 +56,14 @@ public:
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Sensivity")
-	TEnumAsByte<FLightAwarenessSensitivity> LightAwarenessSensitivity = FLightAwarenessSensitivity::Optimized;
+	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Optimized;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
-	TEnumAsByte<FLightAwarenessDetectionMethod> LightAwarenessMethod = FLightAwarenessDetectionMethod::Double;
+	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Both;
 
+	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
+	ELightAwarenessState LightAwarenessComponentState = ELightAwarenessState::Inactive;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
 	bool LightAwarenessGI;
 
@@ -77,15 +89,37 @@ public:
 	TArray<FColor> GetBufferPixels();
 	
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Set Light Sensivity")
-	void SetLightSensitivity(FLightAwarenessSensitivity Sensitivity);
+	void SetLightSensitivity(ELightAwarenessSensitivity Sensitivity);
 
 protected:
 	// Called when the game starts.
 	virtual void BeginPlay() override;
 
+	// Called when the component destroy.
+	virtual void BeginDestroy() override;
+
 	// Create Detection Assets
 	virtual void OnComponentCreated() override;
 
+	// Creates and Assigns component and its owner some unique tags
+	void CreateComponentIDTag();
+
+	// Sets component state
+	void SetComponentState(ELightAwarenessState State);
+
+	// Creates a timer to check rendering state
+	void CreateOwnerRenderingStateChecker();
+
+	// Checks rendering state and sets components ELightAwarenessStatus
+	UFUNCTION()
+	void GetRenderingState();
+
+	// Array Top Rendering Pixels
+	TArray<FColor> RenderBufferPixelsTop();
+	
+	// Array Bottom Rendering Pixels
+	TArray<FColor> RenderBufferPixelsBottom();
+	
 #if WITH_EDITOR
 	// Editor Preview Changes
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -135,10 +169,14 @@ protected:
 	// Scene Capture Component
 	UPROPERTY(VisibleDefaultsOnly, Category="Light Awareness")
 	USceneCaptureComponent2D* sceneCaptureComponentBottom;
-	
-	// Detector Mesh Status 
-	bool bIsDetectorsSpawned;
 
+	// Scene Capture Component
+	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
+	FString LightAwarenessTagPrefix = "LightAwarenessComponent";
+
+	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
+	float RenderingCheckRate = 1.0f;
+	
 	// Editor Settings of Detector
 	void UpdateSettings() const;
 
@@ -158,6 +196,8 @@ protected:
 
 	// Buffer Image
 	TArray<FColor> BufferImage;
+
+	UMeshComponent* OwnerMeshComponent;
 
 public:
 	// Called every frame

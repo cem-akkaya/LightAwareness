@@ -21,9 +21,6 @@ ULightAwarenessComponent::ULightAwarenessComponent()
 	SetIsReplicatedByDefault(false);
 	SetIsReplicated(false);
 	
-	// Component Add Tag
-	this->ComponentTags.Add(FName("LightAwarenessResponder"));
-
 	// Refer to default Octahedron Static Mesh
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshReferral(TEXT("/Script/Engine.StaticMesh'/LightAwareness/Octahedron.Octahedron'"));
 	OctahedronMesh = MeshReferral.Object;
@@ -45,9 +42,56 @@ void ULightAwarenessComponent::OnComponentCreated()
 {
 	Super::OnComponentCreated();
 
-	if (!bIsDetectorsSpawned)
+	SetupComponentPeripherals();
+	CreateComponentIDTag();
+}
+
+void ULightAwarenessComponent::CreateComponentIDTag()
+{
+	// Define Tag
+	auto CreatedTag = LightAwarenessTagPrefix + ":" + GetOwner()->GetName();
+
+	// Add created tags
+	GetOwner()->Tags.Add(FName(CreatedTag));
+	this->ComponentTags.Add(FName(CreatedTag));
+
+	// Component Add Tag Generic
+	this->ComponentTags.Add(FName("LightAwarenessResponder"));
+}
+
+void ULightAwarenessComponent::SetComponentState(ELightAwarenessState State)
+{
+	LightAwarenessComponentState = State;
+}
+
+void ULightAwarenessComponent::CreateOwnerRenderingStateChecker()
+{
+	//Create timer and delegate for rendering state checks
+	FTimerDelegate Delegate;
+	Delegate.BindUFunction(this, "GetRenderingState"); 
+	
+	OwnerMeshComponent = GetOwner()->GetComponentByClass<UMeshComponent>();
+
+	if (OwnerMeshComponent && !OwnerMeshComponent->bHiddenInGame)
 	{
-		SetupComponentPeripherals();
+		FTimerHandle TimerHandle_RenderingStateHandle;
+		GetWorld()->GetTimerManager().SetTimer(TimerHandle_RenderingStateHandle, Delegate, RenderingCheckRate, true);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Light Awareness : Owning Actor has no mesh component visibility, cancelling rendering state checker."));
+	}
+}
+
+void ULightAwarenessComponent::GetRenderingState()
+{
+	if (OwnerMeshComponent->WasRecentlyRendered() && LightAwarenessComponentState != ELightAwarenessState::ActiveVisible)
+	{
+		SetComponentState(ELightAwarenessState::ActiveVisible);
+	}
+	else if ( !OwnerMeshComponent->WasRecentlyRendered() && LightAwarenessComponentState == ELightAwarenessState::ActiveVisible)
+	{
+		SetComponentState(ELightAwarenessState::Active);
 	}
 }
 
@@ -59,24 +103,21 @@ void ULightAwarenessComponent::SetupComponentPeripherals()
 	// Set Scene Capture
 	SetupSceneCapture();
 
-	bIsDetectorsSpawned = true;
 }
 
 void ULightAwarenessComponent::BeginPlay() 
 {
 	Super::BeginPlay();
 
-	if (!bIsDetectorsSpawned)
-	{
-		SetupComponentPeripherals();
-	}
-
+	// On become relevant sets component state as Active
+	SetComponentState(ELightAwarenessState::Active);
+	
 	// Get image buffer processing area
 	SetLightSensitivity(LightAwarenessSensitivity);
 
 	// Hide possible other components interfering buffer image
 	SetupOwnerOtherComponents();
-
+	
 	// If user prefers setup new render targets that are replicated
 	if (LightAwarenessIsReplicatedRenderTargets)
 	{
@@ -97,6 +138,16 @@ void ULightAwarenessComponent::BeginPlay()
 	// Ensure Settings
 	FTimerHandle SettingsTimer;
 	GetWorld()->GetTimerManager().SetTimer(SettingsTimer, this, &ULightAwarenessComponent::UpdateSettings, 1.0f, false);
+
+	// Looping Timer for component checking its rendering state;
+	CreateOwnerRenderingStateChecker();
+}
+
+void ULightAwarenessComponent::BeginDestroy()
+{
+	Super::BeginDestroy();
+
+	SetComponentState(ELightAwarenessState::Inactive);
 }
 
 void ULightAwarenessComponent::SetupOwnerOtherComponents() const
@@ -131,10 +182,7 @@ void ULightAwarenessComponent::SetupOwnerOtherComponents() const
 #if WITH_EDITOR
 void ULightAwarenessComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	if (bIsDetectorsSpawned)
-	{
-		UpdateSettings();
-	}
+	UpdateSettings();
 }
 #endif
 
@@ -154,7 +202,6 @@ void ULightAwarenessComponent::SpawnRenderMesh()
 	LightAwarenessMaterialDynamic = UMaterialInstanceDynamic::Create(LightAwarenessMaterial, this);
 	LightAwarenessMesh->SetMaterial(0, LightAwarenessMaterialDynamic);
 	
-	LightAwarenessMesh->RegisterComponent();
 	SetRenderMeshVisibility(true);
 }
 
@@ -232,7 +279,6 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 #endif
 	sceneCaptureComponents->TextureTarget->UpdateResourceImmediate();
 	
-	sceneCaptureComponents->RegisterComponent();
 }
 
 TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
@@ -244,47 +290,60 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 	LightAwarenessMesh->SetWorldRotation(FRotator(0.0f, 0.0f, 0.0f));
 	
 	// Enqueue Render Command to update texture resource depending on method
-	if (LightAwarenessMethod == Single)
-	{
-		sceneCaptureComponentTop->CaptureScene();
+		switch (LightAwarenessMethod)
+    	{
+    	case ELightAwarenessDetectionMethod::Top:
+    		BufferImage = RenderBufferPixelsTop();
+    			break;
+    	case ELightAwarenessDetectionMethod::Bottom:
+    		BufferImage = RenderBufferPixelsBottom();
+    			break;
+		case ELightAwarenessDetectionMethod::Both:
+			BufferImage = RenderBufferPixelsTop();
+			BufferImage.Append(RenderBufferPixelsBottom());
+			break;
+    	default: break; 
+    	}
+	return BufferImage;
+}
 
-		// Get Buffer Image Pıxel to an Array
-		FTextureRenderTargetResource *RenderTargetTop = sceneCaptureComponentTop->TextureTarget->GameThread_GetRenderTargetResource();
+TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsTop()
+{
+	TArray<FColor> PixelArray;
+	sceneCaptureComponentTop->CaptureScene();
 
-		// Define Color Array
-		TArray<FColor> CurrentBufferTop;
+	// Get Buffer Image Pıxel to an Array
+	FTextureRenderTargetResource *RenderTargetTop = sceneCaptureComponentTop->TextureTarget->GameThread_GetRenderTargetResource();
 
-		// Define Search Box
-		const auto SearchRectangle = FIntRect( XMin, YMin, XMax, YMax);
-		RenderTargetTop->ReadPixels(CurrentBufferTop,RCM_MinMax, SearchRectangle);
+	// Define Color Array
+	TArray<FColor> CurrentBufferTop;
 
-		BufferImage.Append(CurrentBufferTop);
+	// Define Search Box
+	const auto SearchRectangle = FIntRect( XMin, YMin, XMax, YMax);
+	RenderTargetTop->ReadPixels(CurrentBufferTop,RCM_MinMax, SearchRectangle);
+
+	PixelArray.Append(CurrentBufferTop);
 		
-		return BufferImage ;
-	}
-	else
-	{
-		sceneCaptureComponentTop->CaptureScene();
-		sceneCaptureComponentBottom->CaptureScene();
+	return PixelArray ;
+}
 
-		// Get Buffer Image Pıxel to an Array
-		FTextureRenderTargetResource *RenderTargetTop = sceneCaptureComponentTop->TextureTarget->GameThread_GetRenderTargetResource();
-		FTextureRenderTargetResource *RenderTargetBottom = sceneCaptureComponentBottom->TextureTarget->GameThread_GetRenderTargetResource();
-		
-		// Define Color Array
-		TArray<FColor> CurrentBufferTop;
-		TArray<FColor> CurrentBufferBottom;
-		
-		// Define Search Box
-		const auto SearchRectangle = FIntRect( XMin, YMin, XMax, YMax);
-		RenderTargetTop->ReadPixels(CurrentBufferTop,RCM_MinMax, SearchRectangle);
-		RenderTargetBottom->ReadPixels(CurrentBufferBottom,RCM_MinMax, SearchRectangle);
+TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsBottom()
+{
+	TArray<FColor> PixelArray;
+	sceneCaptureComponentBottom->CaptureScene();
 
-		BufferImage.Append(CurrentBufferTop);
-		BufferImage.Append(CurrentBufferBottom);
-		
-		return BufferImage;
-	}
+	// Get Buffer Image Pıxel to an Array
+	FTextureRenderTargetResource *RenderTargetBottom = sceneCaptureComponentBottom->TextureTarget->GameThread_GetRenderTargetResource();
+
+	// Define Color Array
+	TArray<FColor> CurrentBufferBottom;
+
+	// Define Search Box
+	const auto SearchRectangle = FIntRect( XMin, YMin, XMax, YMax);
+	RenderTargetBottom->ReadPixels(CurrentBufferBottom,RCM_MinMax, SearchRectangle);
+
+	PixelArray.Append(CurrentBufferBottom);
+	return PixelArray ;
 }
 
 float ULightAwarenessComponent::GetLightStatus()
@@ -305,17 +364,17 @@ float ULightAwarenessComponent::GetLightStatus()
 	return LightValue;
 }
 
-void ULightAwarenessComponent::SetLightSensitivity(FLightAwarenessSensitivity Sensitivity)
+void ULightAwarenessComponent::SetLightSensitivity(ELightAwarenessSensitivity Sensitivity)
 {
 	switch (LightAwarenessSensitivity)
 	{
-	case Optimized:
+	case ELightAwarenessSensitivity::Optimized:
 		RenderWidth = RenderHeight = 8; // 64 Pixels Buffer Array
 		break;
-	case Low:
+	case ELightAwarenessSensitivity::Low:
 		RenderWidth = RenderHeight = 4; // 16 Pixels Buffer Array
 		break;
-	case High:
+	case ELightAwarenessSensitivity::High:
 		RenderWidth = RenderHeight = 16; // 256  Pixels Buffer Array
 		break;
 	default:RenderWidth = RenderHeight = 8;
@@ -332,14 +391,21 @@ void ULightAwarenessComponent::SetLightSensitivity(FLightAwarenessSensitivity Se
 
 void ULightAwarenessComponent::UpdateSettings() const
 {
-	LightAwarenessMesh->SetRelativeScale3D(FVector (1,1,1) * LightAwarenessDetectorScale);
-	LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
-	LightAwarenessMaterialDynamic->SetScalarParameterValue("MatSensitivity", LightAwarenessMaterialSensitivity);
+	if (LightAwarenessMesh)
+	{
+		LightAwarenessMesh->SetRelativeScale3D(FVector (1,1,1) * LightAwarenessDetectorScale);
+		LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
+	}
+	if (LightAwarenessMaterialDynamic)
+	{
+		LightAwarenessMaterialDynamic->SetScalarParameterValue("MatSensitivity", LightAwarenessMaterialSensitivity);
+	}
+	if (sceneCaptureComponentTop)
+	{
+		sceneCaptureComponentTop->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
+		sceneCaptureComponentBottom->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;	
+	}
 
-	sceneCaptureComponentTop->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
-	sceneCaptureComponentBottom->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
-
-	
 #if WITH_EDITOR
 	LightAwarenessMaterial->SetScalarParameterValueEditorOnly("MatSensitivity", LightAwarenessMaterialSensitivity);
 #endif
