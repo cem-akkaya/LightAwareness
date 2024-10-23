@@ -1,1 +1,61 @@
-﻿/.idea/
+﻿﻿# Do not ignore git files in the root of the repo.
+!/.git*
+
+# Do not ignore current project's `.uproject`.
+!/*.uproject
+
+#################################
+# Unreal Engine Generated Files #
+#################################
+/[Bb]uild
+/[Bb]uilds
+/Binaries
+/DerivedDataCache
+/Intermediate
+/Saved
+/Plugins/Developer
+
+#################################
+# Project Plugins #
+#################################
+
+# Plugin #
+/Plugins/LightAwareness/Binaries
+/Plugins/LightAwareness/Intermediate
+# /Plugin #
+
+
+# Plugin #
+/LightAwareness/Binaries
+/LightAwareness/Intermediate
+# /Plugin #
+
+#################################
+# Visual Studio Generated Files #
+#################################
+# Cache Directory
+.vs
+# User Specific Files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+# CPP Cache Files
+*.VC.db
+*.opendb
+*.opensdf
+*.sdf
+# Solution Files
+*.sln
+# VSCode Cache Directory
+.vscode
+# VSCode History Files
+**/.history
+
+###################################
+# JetBrains Rider Generated Files #
+###################################
+# Cache Directory
+.idea
+
