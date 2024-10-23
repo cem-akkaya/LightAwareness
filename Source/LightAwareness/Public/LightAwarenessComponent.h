@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "LightAwarenessSubsystem.h"
 #include "Runtime/CoreUObject/Public/UObject/SoftObjectPtr.h"
 #include "Components/ActorComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
@@ -119,6 +120,10 @@ protected:
 	
 	// Array Bottom Rendering Pixels
 	TArray<FColor> RenderBufferPixelsBottom();
+
+	ULightAwarenessSubsystem* LightAwarenessSubsystem;
+
+	ULightAwarenessSubsystem* GetLightAwarenessSubsystem();
 	
 #if WITH_EDITOR
 	// Editor Preview Changes

@@ -62,6 +62,23 @@ void ULightAwarenessComponent::CreateComponentIDTag()
 void ULightAwarenessComponent::SetComponentState(ELightAwarenessState State)
 {
 	LightAwarenessComponentState = State;
+
+	if (LightAwarenessSubsystem)
+	{
+		switch (LightAwarenessComponentState)
+		{
+		case ELightAwarenessState::Inactive:
+			LightAwarenessSubsystem->UnregisterComponent(this);
+			break;
+		case ELightAwarenessState::Active:
+			LightAwarenessSubsystem->RegisterComponent(this);
+			break;
+		case ELightAwarenessState::ActiveVisible:
+			LightAwarenessSubsystem->RegisterComponent(this);
+			break;
+		default: break; 
+		}
+	}
 }
 
 void ULightAwarenessComponent::CreateOwnerRenderingStateChecker()
@@ -108,6 +125,9 @@ void ULightAwarenessComponent::SetupComponentPeripherals()
 void ULightAwarenessComponent::BeginPlay() 
 {
 	Super::BeginPlay();
+
+	// Get Subsystem
+	LightAwarenessSubsystem = GetLightAwarenessSubsystem();
 
 	// On become relevant sets component state as Active
 	SetComponentState(ELightAwarenessState::Active);
@@ -185,6 +205,15 @@ void ULightAwarenessComponent::PostEditChangeProperty(FPropertyChangedEvent& Pro
 	UpdateSettings();
 }
 #endif
+
+ULightAwarenessSubsystem* ULightAwarenessComponent::GetLightAwarenessSubsystem()
+{
+	if (auto Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<ULightAwarenessSubsystem>())
+	{
+		return Subsystem;
+	}
+	return nullptr;
+}
 
 void ULightAwarenessComponent::SpawnRenderMesh()
 {
