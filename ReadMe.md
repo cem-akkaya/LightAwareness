@@ -81,6 +81,18 @@ Install it like any other Unreal Engine plugin.
 - Call "Get Light Status" function to snapshot light level on object.
 - Engine Versions Under 5.2 Should use "Engine Version Fallback = true"
 
+### Light Awareness Subsystem
+<img src="https://cemakkaya.com/ImageHost/subsystem.jpg" alt="inspector-light-awareness" width="830"/>
+
+- You can access LightAwareness GameInstance subsystem from blueprints
+- Subsystem provides events when an actor with component registers, unregisters or updates its status.
+- You can use this information to simply know how many light awareness responders are available at a given time in gameplay with its status as : Active or ActiveRendering
+- Without the events you can simply use GetCurrentLightAwarenessResponders blueprint node to access array of components.
+- You can select and filter GetCurrentLightAwarenessResponders node with currently active responders and active being rendered state ones.
+- When a component is destroyed (kill or streamed out), component is unregistered from subsystem.
+- Visibility status depends on the actor having at least one mesh component. There is no tracing methods used on the component since its costly, you can use additional tracing on event to determine object position or further gameplay/functionality logic.
+
+
 A demo with network enabled plugin in action can be found below link.
 [Light Awareness Demo UE5 Project](https://github.com/cem-akkaya/LightAwarenessDemo)
 
