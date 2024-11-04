@@ -34,12 +34,22 @@ enum class ELightAwarenessDetectionMethod : uint8
 };
 
 UENUM(BlueprintType)
+enum class ELightAwarenessGetMethod : uint8
+{
+	Manuel UMETA(DisplayName = "Manually Request / None"),
+	Distance UMETA(DisplayName = "Update With Delta Distance"),
+	EveryFrame UMETA(DisplayName = "Update Every Tick"),
+};
+
+UENUM(BlueprintType)
 enum class ELightAwarenessState : uint8
 {
 	Inactive UMETA(DisplayName = "Inactive"),
 	Active UMETA(DisplayName = "Active"),
 	ActiveVisible UMETA(DisplayName = "ActiveRendered"),
 };
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLightAwarenessComponentUpdated, float, CurrentLightValue);
 
 UCLASS(Blueprintable, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class LIGHTAWARENESS_API ULightAwarenessComponent : public UActorComponent
@@ -48,32 +58,43 @@ class LIGHTAWARENESS_API ULightAwarenessComponent : public UActorComponent
 
 public:
 	// Sets default values for this component's properties
-	ULightAwarenessComponent();
+	ULightAwarenessComponent(const FObjectInitializer& ObjectInitializer);
+
+	UPROPERTY(BlueprintAssignable, Category="Light Awareness - Events")
+	FOnLightAwarenessComponentUpdated OnLightAwarenessComponentUpdated;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Scale", meta = (ClampMin = "0.1", ClampMax = "10", UIMin = "0.1", UIMax = "10"))
 	float LightAwarenessDetectorScale = 0.5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Offset", meta = (ClampMin = "-500", ClampMax = "500", UIMin = "-500", UIMax = "500"))
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
-	
+
+	/** How many pixels should be searched for. Generally low or optimised setting will work for many */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Sensivity")
 	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Optimized;
 
+	/** In Many cases the light from top directional should be enough, however if you are closely using GI to gameplay mechanics can be used both */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
 	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Both;
 
+	/** How the component should work and update light status on owner object. Distance threshold can be set below in settings or in blueprints */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
+	ELightAwarenessGetMethod LightAwarenessGetMethod = ELightAwarenessGetMethod::Distance;
+	
 	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
 	ELightAwarenessState LightAwarenessComponentState = ELightAwarenessState::Inactive;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
 	bool LightAwarenessGI;
 
+	/** If Engine version is less than 5.4 use it for detecting global illumination. Can be ignored if GI is not required. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
 	bool LightAwarenessFallback;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Replicate Render Targets")
 	bool LightAwarenessIsReplicatedRenderTargets;
-	
+
+	/** In too bright environments material can be darker 0 or lighter 1, depending on situation. This effect the outcome values of light since they are multiplied with material base color*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightAwarenessMaterialSensitivity = 1;
 	
@@ -86,9 +107,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Status")
 	float GetLightStatus();
 
+	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Status")
+	void GetLightStatusDeferred();
+
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Get Light Buffer")
 	TArray<FColor> GetBufferPixels();
-	
+
+	/** How many pixels should be searched for. Generally low or optimised setting will work for many */
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Set Light Sensivity")
 	void SetLightSensitivity(ELightAwarenessSensitivity Sensitivity);
 
@@ -176,11 +201,20 @@ protected:
 	USceneCaptureComponent2D* sceneCaptureComponentBottom;
 
 	// Scene Capture Component
+	/** Owner Actor will have tags starting with this prefix and object name as suffix */
 	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
 	FString LightAwarenessTagPrefix = "LightAwarenessComponent";
 
+	/** How much difference should occur in light threshold to fire an update event, can be set to 0 for every minor change */
 	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
+	float LightUpdateStepThreshold = 0.1;
+
 	float RenderingCheckRate = 1.0f;
+
+	float LastLightStatusValue;
+
+	UFUNCTION()
+	void ProcessBufferDeferred();
 	
 	// Editor Settings of Detector
 	void UpdateSettings() const;
@@ -203,6 +237,14 @@ protected:
 	TArray<FColor> BufferImage;
 
 	UMeshComponent* OwnerMeshComponent;
+
+	// Generic Deployment Method Variables
+
+	FVector LastUpdateWorldPosition;
+
+	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
+	float DistanceDeltaForUpdate = 10;
+	
 
 public:
 	// Called every frame

@@ -10,10 +10,12 @@
 #include "TimerManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "UObject/ConstructorHelpers.h"
 
-ULightAwarenessComponent::ULightAwarenessComponent()
+ULightAwarenessComponent::ULightAwarenessComponent(const FObjectInitializer& ObjectInitializer)
+: Super(ObjectInitializer)
 {
 	// Component Settings
 	PrimaryComponentTick.bCanEverTick = true;
@@ -142,11 +144,11 @@ void ULightAwarenessComponent::BeginPlay()
 	if (LightAwarenessIsReplicatedRenderTargets)
 	{
 		// Create A New Render Target Top
-		UTextureRenderTarget2D* LARenderTargetTop = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_R8);
+		UTextureRenderTarget2D* LARenderTargetTop = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_RGBA8);
 		sceneCaptureComponentTop->TextureTarget = LARenderTargetTop;
 
 		// Create A New Render Target Top
-		UTextureRenderTarget2D* LARenderTargetBottom = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_R8);
+		UTextureRenderTarget2D* LARenderTargetBottom = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_RGBA8);
 		sceneCaptureComponentBottom->TextureTarget = LARenderTargetBottom;
 	}
 	
@@ -225,7 +227,8 @@ void ULightAwarenessComponent::SpawnRenderMesh()
 	LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
 	LightAwarenessMesh->SetStaticMesh(OctahedronMesh);
 	LightAwarenessMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	LightAwarenessMesh->CastShadow = false;
+	LightAwarenessMesh->CastShadow = true;
+	LightAwarenessMesh->bSelfShadowOnly = true;
 
 	// Create and set material
 	LightAwarenessMaterialDynamic = UMaterialInstanceDynamic::Create(LightAwarenessMaterial, this);
@@ -281,14 +284,18 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	// Enable Lumen For global illumination effects and reflections
 	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
 	sceneCaptureComponents->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
-	
+
+	sceneCaptureComponents->bRenderInMainRenderer = true;
+	sceneCaptureComponents->bConsiderUnrenderedOpaquePixelAsFullyTranslucent = true;
+
 	// Cleanup RenderTarget
 	check(RenderTarget != nullptr);
 	sceneCaptureComponents->TextureTarget->RenderTargetFormat = RTF_RGBA8;
 	sceneCaptureComponents->TextureTarget->ClearColor = FColor::Black;
 	sceneCaptureComponents->TextureTarget->CompressionSettings = TC_VectorDisplacementmap;
 	sceneCaptureComponents->TextureTarget->SRGB = 0;
-
+	sceneCaptureComponents->DetailMode = DM_Medium;
+	
 	// Engine Fallback
 	if (LightAwarenessFallback)
 	{
@@ -314,9 +321,6 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 {
 	// Clear Buffer if any
 	BufferImage.Empty();
-
-	//Always Set rotation world to overcome value peaks regarding the method
-	LightAwarenessMesh->SetWorldRotation(FRotator(0.0f, 0.0f, 0.0f));
 	
 	// Enqueue Render Command to update texture resource depending on method
 		switch (LightAwarenessMethod)
@@ -339,7 +343,7 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsTop()
 {
 	TArray<FColor> PixelArray;
-	sceneCaptureComponentTop->CaptureScene();
+	sceneCaptureComponentTop->CaptureSceneDeferred();
 
 	// Get Buffer Image Pıxel to an Array
 	FTextureRenderTargetResource *RenderTargetTop = sceneCaptureComponentTop->TextureTarget->GameThread_GetRenderTargetResource();
@@ -359,8 +363,8 @@ TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsTop()
 TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsBottom()
 {
 	TArray<FColor> PixelArray;
-	sceneCaptureComponentBottom->CaptureScene();
-
+	sceneCaptureComponentBottom->CaptureSceneDeferred();
+	
 	// Get Buffer Image Pıxel to an Array
 	FTextureRenderTargetResource *RenderTargetBottom = sceneCaptureComponentBottom->TextureTarget->GameThread_GetRenderTargetResource();
 
@@ -381,16 +385,58 @@ float ULightAwarenessComponent::GetLightStatus()
 	GetBufferPixels();
 
 	//Get Channel Max Value as Brute Force Search
-	float LightValue = 0.0;
+
+	float LightValue = 0.f;
+
 	for (int i = 0; i < BufferImage.Num(); i++)
 	{
-		const float AveragePixel = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
-		if ( AveragePixel > LightValue)
+		const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
+		if ( Luminance > LightValue)
 		{
-			LightValue = AveragePixel;
+			LightValue = Luminance;
 		}
 	}
+
+	if (abs(LastLightStatusValue - LightValue) > abs(LightUpdateStepThreshold))
+	{
+		OnLightAwarenessComponentUpdated.Broadcast(LightValue);
+		LastLightStatusValue = LightValue;
+	}	
+	
 	return LightValue;
+}
+
+void ULightAwarenessComponent::GetLightStatusDeferred()
+{
+	// Get Buffer Image Refresh
+	GetBufferPixels();
+
+	FTimerHandle TimerHandle_DeferredBufferProcess;
+	FTimerDelegate Delegate; // Delegate to bind function with parameters
+	Delegate.BindUFunction(this, "ProcessBufferDeferred", true); 
+
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle_DeferredBufferProcess, Delegate, GetWorld()->DeltaTimeSeconds, false);
+	
+}
+
+void ULightAwarenessComponent::ProcessBufferDeferred()
+{
+	//Get Channel Max Value as Brute Force Search
+	float LightValue = 0.f;
+
+	for (int i = 0; i < BufferImage.Num(); i++)
+	{
+		const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
+		if ( Luminance > LightValue)
+		{
+			LightValue = Luminance;
+		}
+	}
+	if (abs(LastLightStatusValue - LightValue) > abs(LightUpdateStepThreshold))
+	{
+		OnLightAwarenessComponentUpdated.Broadcast(LightValue);
+		LastLightStatusValue = LightValue;
+	}	
 }
 
 void ULightAwarenessComponent::SetLightSensitivity(ELightAwarenessSensitivity Sensitivity)
@@ -416,6 +462,10 @@ void ULightAwarenessComponent::SetLightSensitivity(ELightAwarenessSensitivity Se
 	YMax = RenderHeight;
 	XMin = 0;
 	XMax = RenderWidth;
+
+	// Reserve Array for memory allocation
+	BufferImage.Reserve(UKismetMathLibrary::Square(RenderWidth));
+	BufferImage.SetNum(UKismetMathLibrary::Square(RenderWidth));
 }
 
 void ULightAwarenessComponent::UpdateSettings() const
@@ -468,5 +518,27 @@ void ULightAwarenessComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
                                              FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	//Always Set rotation world to overcome value peaks regarding the method
+	LightAwarenessMesh->SetWorldRotation(FRotator(0.0f, 0.0f, 0.0f));
+
+	// Method Update On Distance Delta Threshold Reached
+	if (LightAwarenessGetMethod == ELightAwarenessGetMethod::Distance)
+	{
+		auto CurrentOwnerLocation = GetOwner()->GetActorLocation();
+		auto CurrentDistanceDelta = UKismetMathLibrary::Abs(UKismetMathLibrary::Vector_Distance2D(CurrentOwnerLocation, LastUpdateWorldPosition));
+		if (CurrentDistanceDelta > abs(DistanceDeltaForUpdate))
+		{
+			GetLightStatusDeferred();
+			LastUpdateWorldPosition = CurrentOwnerLocation;
+		}
+	}
+
+	// Method Update On Every Tick
+	if (LightAwarenessGetMethod == ELightAwarenessGetMethod::EveryFrame)
+	{
+		GetLightStatus();
+	}
+
 }
 
