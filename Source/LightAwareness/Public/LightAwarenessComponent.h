@@ -71,11 +71,11 @@ public:
 
 	/** How many pixels should be searched for. Generally low or optimised setting will work for many */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Sensivity")
-	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Optimized;
+	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Low;
 
 	/** In Many cases the light from top directional should be enough, however if you are closely using GI to gameplay mechanics can be used both */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
-	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Both;
+	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Top;
 
 	/** How the component should work and update light status on owner object. Distance threshold can be set below in settings or in blueprints */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")

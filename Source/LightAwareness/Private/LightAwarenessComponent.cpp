@@ -343,7 +343,7 @@ TArray<FColor> ULightAwarenessComponent::GetBufferPixels()
 TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsTop()
 {
 	TArray<FColor> PixelArray;
-	sceneCaptureComponentTop->CaptureSceneDeferred();
+	sceneCaptureComponentTop->CaptureScene();
 
 	// Get Buffer Image Pıxel to an Array
 	FTextureRenderTargetResource *RenderTargetTop = sceneCaptureComponentTop->TextureTarget->GameThread_GetRenderTargetResource();
@@ -363,7 +363,7 @@ TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsTop()
 TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsBottom()
 {
 	TArray<FColor> PixelArray;
-	sceneCaptureComponentBottom->CaptureSceneDeferred();
+	sceneCaptureComponentBottom->CaptureScene();
 	
 	// Get Buffer Image Pıxel to an Array
 	FTextureRenderTargetResource *RenderTargetBottom = sceneCaptureComponentBottom->TextureTarget->GameThread_GetRenderTargetResource();

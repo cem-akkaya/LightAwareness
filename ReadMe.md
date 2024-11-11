@@ -40,6 +40,8 @@ If you want to contribute, feel free to create a pull request.
 - Debug views and light thresholds for your game's global lightening conditions.
 - Ability to integrate plugin into any actor on runtime.
 - Ability to get light and buffer pixels from blueprints.
+- Subsystem for accessing light status data and status update events.
+- Integrated update methods for usage if suitable for your project as distance update.
 
 ## Examples
 
@@ -78,7 +80,8 @@ Install it like any other Unreal Engine plugin.
 - On your actor add component "LightAwareness".
 - Define the light gem using components scaling and offsets to your needs.
 - Define sensitivity and method as you need.
-- Call "Get Light Status" function to snapshot light level on object.
+- Call "Get Light Status" function to snapshot light level on object for manual request of status.
+- Call Subsystem update event for accessing light changes in large scale environments and utilization.
 - Engine Versions Under 5.2 Should use "Engine Version Fallback = true"
 
 ### Light Awareness Subsystem
