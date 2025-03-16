@@ -387,14 +387,29 @@ float ULightAwarenessComponent::GetLightStatus()
 	//Get Channel Max Value as Brute Force Search
 
 	float LightValue = 0.f;
-
-	for (int i = 0; i < BufferImage.Num(); i++)
+	
+	if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Brightest)
 	{
-		const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
-		if ( Luminance > LightValue)
+		for (int i = 0; i < BufferImage.Num(); i++)
 		{
-			LightValue = Luminance;
+			const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
+			if ( Luminance > LightValue)
+			{
+				LightValue = Luminance;
+			}
+		}	
+	}
+	else
+	{
+		float AverageLightValue = 0.f;
+
+		for (int i = 0; i < BufferImage.Num(); i++)
+		{
+			const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
+			AverageLightValue += Luminance;
 		}
+		AverageLightValue/=BufferImage.Num();
+		LightValue = AverageLightValue;
 	}
 
 	if (abs(LastLightStatusValue - LightValue) > abs(LightUpdateStepThreshold))
@@ -410,33 +425,49 @@ void ULightAwarenessComponent::GetLightStatusDeferred()
 {
 	// Get Buffer Image Refresh
 	GetBufferPixels();
-
-	FTimerHandle TimerHandle_DeferredBufferProcess;
-	FTimerDelegate Delegate; // Delegate to bind function with parameters
-	Delegate.BindUFunction(this, "ProcessBufferDeferred", true); 
-
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle_DeferredBufferProcess, Delegate, GetWorld()->DeltaTimeSeconds, false);
 	
-}
-
-void ULightAwarenessComponent::ProcessBufferDeferred()
-{
-	//Get Channel Max Value as Brute Force Search
-	float LightValue = 0.f;
-
-	for (int i = 0; i < BufferImage.Num(); i++)
+	// Start async task for buffer processing
+	if (BufferImage.Num() > 0)
 	{
-		const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
-		if ( Luminance > LightValue)
+		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this]()
 		{
-			LightValue = Luminance;
-		}
+			// Compute the light status on a background thread
+			float MaxLightValue = 0.f;
+			if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Brightest)
+			{
+				for (int32 i = 0; i < BufferImage.Num(); i++)
+				{
+					const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f;
+					if (Luminance > MaxLightValue)
+					{
+						MaxLightValue = Luminance;
+					}
+				}
+			}
+			else
+			{
+				float AverageLightValue = 0.f;
+
+				for (int i = 0; i < BufferImage.Num(); i++)
+				{
+					const float Luminance = ((BufferImage[i].R + BufferImage[i].G + BufferImage[i].B) / 3 ) / 255.0f ;
+					AverageLightValue += Luminance;
+				}
+				AverageLightValue/=BufferImage.Num();
+				MaxLightValue = AverageLightValue;
+			}
+			
+			// Push the computed value to the game thread to update safely
+			AsyncTask(ENamedThreads::GameThread, [this, MaxLightValue]()
+			{
+				if (FMath::Abs(LastLightStatusValue - MaxLightValue) > FMath::Abs(LightUpdateStepThreshold))
+				{
+					OnLightAwarenessComponentUpdated.Broadcast(MaxLightValue);
+					LastLightStatusValue = MaxLightValue;
+				}
+			});
+		});
 	}
-	if (abs(LastLightStatusValue - LightValue) > abs(LightUpdateStepThreshold))
-	{
-		OnLightAwarenessComponentUpdated.Broadcast(LightValue);
-		LastLightStatusValue = LightValue;
-	}	
 }
 
 void ULightAwarenessComponent::SetLightSensitivity(ELightAwarenessSensitivity Sensitivity)
@@ -537,7 +568,7 @@ void ULightAwarenessComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	// Method Update On Every Tick
 	if (LightAwarenessGetMethod == ELightAwarenessGetMethod::EveryFrame)
 	{
-		GetLightStatus();
+		GetLightStatusDeferred();
 	}
 
 }
