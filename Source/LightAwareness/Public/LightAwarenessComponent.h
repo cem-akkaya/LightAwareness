@@ -42,6 +42,13 @@ enum class ELightAwarenessGetMethod : uint8
 };
 
 UENUM(BlueprintType)
+enum class ELightAwarenessCalculationMethod : uint8
+{
+	Brightest UMETA(DisplayName = "Get Brightest Pixel"),
+	Average UMETA(DisplayName = "Average Pixels"),
+};
+
+UENUM(BlueprintType)
 enum class ELightAwarenessState : uint8
 {
 	Inactive UMETA(DisplayName = "Inactive"),
@@ -80,6 +87,10 @@ public:
 	/** How the component should work and update light status on owner object. Distance threshold can be set below in settings or in blueprints */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
 	ELightAwarenessGetMethod LightAwarenessGetMethod = ELightAwarenessGetMethod::Distance;
+
+	/** Return the brightest pixel or average pixels on light awareness gem */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
+	ELightAwarenessCalculationMethod LightAwarenessCalculationMethod = ELightAwarenessCalculationMethod::Brightest;
 	
 	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
 	ELightAwarenessState LightAwarenessComponentState = ELightAwarenessState::Inactive;
@@ -95,8 +106,12 @@ public:
 	bool LightAwarenessIsReplicatedRenderTargets;
 
 	/** In too bright environments material can be darker 0 or lighter 1, depending on situation. This effect the outcome values of light since they are multiplied with material base color*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Sensitivity", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightAwarenessMaterialSensitivity = 1;
+
+	/** How much difference should occur in light threshold to fire an update event, can be set to 0 for every minor change */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
+	float LightUpdateStepThreshold = 0.05;
 	
 	UFUNCTION(CallInEditor, Category="Light Awareness" , DisplayName="Hide Light Detector")
 	void HideLightDetector() const;
@@ -205,16 +220,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
 	FString LightAwarenessTagPrefix = "LightAwarenessComponent";
 
-	/** How much difference should occur in light threshold to fire an update event, can be set to 0 for every minor change */
-	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
-	float LightUpdateStepThreshold = 0.1;
-
 	float RenderingCheckRate = 1.0f;
 
 	float LastLightStatusValue;
-
-	UFUNCTION()
-	void ProcessBufferDeferred();
 	
 	// Editor Settings of Detector
 	void UpdateSettings() const;
