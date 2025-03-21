@@ -157,6 +157,11 @@ void ULightAwarenessComponent::BeginPlay()
 	LightAwarenessMesh->SetVisibleInSceneCaptureOnly(true);
 	LightAwarenessMesh->SetHiddenInSceneCapture(false);
 	
+	// Recalculate widths
+	float LightAwarenessMeshBounds = LightAwarenessMesh->GetStaticMesh()->GetBounds().BoxExtent.Length()/2;
+	sceneCaptureComponentTop->OrthoWidth = LightAwarenessMeshBounds;
+	sceneCaptureComponentBottom->OrthoWidth = LightAwarenessMeshBounds;
+
 	// Ensure Settings
 	FTimerHandle SettingsTimer;
 	GetWorld()->GetTimerManager().SetTimer(SettingsTimer, this, &ULightAwarenessComponent::UpdateSettings, 1.0f, false);
