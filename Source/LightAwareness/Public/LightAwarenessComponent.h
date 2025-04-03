@@ -89,7 +89,7 @@ public:
 	ELightAwarenessGetMethod LightAwarenessGetMethod = ELightAwarenessGetMethod::Distance;
 
 	/** Return the brightest pixel or average pixels on light awareness gem */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Calculation Method")
 	ELightAwarenessCalculationMethod LightAwarenessCalculationMethod = ELightAwarenessCalculationMethod::Brightest;
 	
 	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
