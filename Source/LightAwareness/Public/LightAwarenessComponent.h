@@ -6,9 +6,6 @@
 #include "LightAwarenessSubsystem.h"
 #include "Runtime/CoreUObject/Public/UObject/SoftObjectPtr.h"
 #include "Components/ActorComponent.h"
-#include "Components/SceneCaptureComponent2D.h"
-#include "Engine/TextureRenderTarget2D.h"
-#include "Kismet/KismetRenderingLibrary.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -76,21 +73,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Offset", meta = (ClampMin = "-500", ClampMax = "500", UIMin = "-500", UIMax = "500"))
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
 
-	/** How many pixels should be searched for. Generally low or optimised setting will work for many */
+	/** How many pixels should be searched for? Generally low or optimized setting will work for many */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Sensivity")
 	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Low;
 
-	/** In Many cases the light from top directional should be enough, however if you are closely using GI to gameplay mechanics can be used both */
+	/** In Many cases the light from the top directional should be enough, however, if you are closely using GI to gameplay mechanics can be used both */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Direction")
 	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Top;
 
-	/** How the component should work and update light status on owner object. Distance threshold can be set below in settings or in blueprints */
+	/** How the component should work and update light status on an owner object. The distance threshold can be set below in settings or in blueprints */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
 	ELightAwarenessGetMethod LightAwarenessGetMethod = ELightAwarenessGetMethod::Distance;
 
 	/** Return the brightest pixel or average pixels on light awareness gem */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
-	ELightAwarenessCalculationMethod LightAwarenessCalculationMethod = ELightAwarenessCalculationMethod::Brightest;
+	ELightAwarenessCalculationMethod LightAwarenessCalculationMethod = ELightAwarenessCalculationMethod::Average ;
 	
 	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
 	ELightAwarenessState LightAwarenessComponentState = ELightAwarenessState::Inactive;
@@ -98,20 +95,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
 	bool LightAwarenessGI;
 
-	/** If Engine version is less than 5.4 use it for detecting global illumination. Can be ignored if GI is not required. */
+	/** If the Engine version is less than 5.4, use it for detecting global illumination. Can be ignored if GI is not required. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
 	bool LightAwarenessFallback;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Replicate Render Targets")
 	bool LightAwarenessIsReplicatedRenderTargets;
 
-	/** In too bright environments material can be darker 0 or lighter 1, depending on situation. This effect the outcome values of light since they are multiplied with material base color*/
+	/** In too bright environments material can be darker 0 or lighter 1, depending on the situation. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Sensitivity", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightAwarenessMaterialSensitivity = 1;
 
-	/** How much difference should occur in light threshold to fire an update event, can be set to 0 for every minor change */
+	/** How much difference should occur in a light threshold to fire an update event can be set to 0 for every minor change */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
 	float LightUpdateStepThreshold = 0.05;
+
+	/** Owner Actor will have tags starting with this prefix and object name as a suffix */
+	UPROPERTY(EditAnywhere, Category="Light Awareness")
+	FString LightAwarenessTagPrefix = "LightAwarenessComponent";
+
+	/** How many units should an owner travel before update its light value? */
+	UPROPERTY(EditAnywhere, Category="Light Awareness" , meta=(EditCondition="LightAwarenessGetMethod==ELightAwarenessGetMethod::Distance"))
+	float DistanceDeltaForUpdate = 10;
 	
 	UFUNCTION(CallInEditor, Category="Light Awareness" , DisplayName="Hide Light Detector")
 	void HideLightDetector() const;
@@ -128,7 +133,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Get Light Buffer")
 	TArray<FColor> GetBufferPixels();
 
-	/** How many pixels should be searched for. Generally low or optimised setting will work for many */
+	/** How many pixels should be searched for? Generally low or optimized setting will work for many */
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Set Light Sensivity")
 	void SetLightSensitivity(ELightAwarenessSensitivity Sensitivity);
 
@@ -142,13 +147,13 @@ protected:
 	// Create Detection Assets
 	virtual void OnComponentCreated() override;
 
-	// Creates and Assigns component and its owner some unique tags
+	// Creates and Assigns a component and its owner some unique tags
 	void CreateComponentIDTag();
 
 	// Sets component state
 	void SetComponentState(ELightAwarenessState State);
 
-	// Creates a timer to check rendering state
+	// Creates a timer to check the rendering state
 	void CreateOwnerRenderingStateChecker();
 
 	// Checks rendering state and sets components ELightAwarenessStatus
@@ -161,6 +166,7 @@ protected:
 	// Array Bottom Rendering Pixels
 	TArray<FColor> RenderBufferPixelsBottom();
 
+	UPROPERTY()
 	ULightAwarenessSubsystem* LightAwarenessSubsystem;
 
 	ULightAwarenessSubsystem* GetLightAwarenessSubsystem();
@@ -183,18 +189,23 @@ protected:
 	void SetRenderMeshVisibility(bool Status) const;
 	
 	// Static Mesh
+	UPROPERTY()
 	UStaticMesh* OctahedronMesh;
 
 	// Static Mesh Material
+	UPROPERTY()
 	UMaterial* LightAwarenessMaterial;
 
 	// Dynamic Material Instance
+	UPROPERTY()
 	UMaterialInstanceDynamic* LightAwarenessMaterialDynamic;
 
 	// Render Target Top
+	UPROPERTY()
 	UTextureRenderTarget2D* LightAwarenessRenderTargetTop;
 
 	// Render Target Bottom
+	UPROPERTY()
 	UTextureRenderTarget2D* LightAwarenessRenderTargetBottom;
 	
 	// Render Target Resource
@@ -210,16 +221,10 @@ protected:
 	// Scene Capture Component
 	UPROPERTY(VisibleDefaultsOnly, Category="Light Awareness")
 	USceneCaptureComponent2D* sceneCaptureComponentTop;
-
-	// Scene Capture Component
+	
 	UPROPERTY(VisibleDefaultsOnly, Category="Light Awareness")
 	USceneCaptureComponent2D* sceneCaptureComponentBottom;
-
-	// Scene Capture Component
-	/** Owner Actor will have tags starting with this prefix and object name as suffix */
-	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
-	FString LightAwarenessTagPrefix = "LightAwarenessComponent";
-
+	
 	float RenderingCheckRate = 1.0f;
 
 	float LastLightStatusValue;
@@ -244,15 +249,11 @@ protected:
 	// Buffer Image
 	TArray<FColor> BufferImage;
 
+	UPROPERTY()
 	UMeshComponent* OwnerMeshComponent;
 
 	// Generic Deployment Method Variables
-
 	FVector LastUpdateWorldPosition;
-
-	UPROPERTY(EditAnywhere, Category="Light Awareness - Variables")
-	float DistanceDeltaForUpdate = 10;
-	
 
 public:
 	// Called every frame
