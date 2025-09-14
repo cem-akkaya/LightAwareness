@@ -286,7 +286,29 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->TextureTarget->SizeX = 16; // 16 Min Effective Shadow Catcher size for any condition
 	sceneCaptureComponents->TextureTarget->SizeY = 16; // 16 Min Effective Shadow Catcher size for any condition
 
+
+	// Lighting + shadows ON, everything "post" OFF
+	auto& F = sceneCaptureComponents->ShowFlags;
+	F.SetLighting(true);
+	F.SetMaterials(true);
+	F.SetGlobalIllumination(LightAwarenessGI);      
+
+	F.SetPostProcessing(false);
+	F.SetAntiAliasing(false);
+	F.SetMotionBlur(false);
+	F.SetDepthOfField(false);
+	F.SetLensFlares(false);
+	F.SetBloom(false);
+	F.SetAmbientOcclusion(false);
+	F.SetScreenSpaceReflections(false);
+	F.SetFog(false);
+	F.SetVolumetricFog(false);
+	F.SetTranslucency(false);
+	F.SetSeparateTranslucency(false);
+	F.SetEyeAdaptation(false);  
+	
 	// Enable Lumen For global illumination effects and reflections
+	// Exposure is auto however we have setting for material intensity, rather than making exposure manual use material intensity as workaround.
 	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
 	sceneCaptureComponents->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
 
