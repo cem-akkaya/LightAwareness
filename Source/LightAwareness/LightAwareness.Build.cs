@@ -31,7 +31,8 @@ public class LightAwareness : ModuleRules
 				"Engine",
 				"RenderCore", 
 				"Renderer",
-				"RHI"
+				"RHI",
+				"Projects"
 			}
 			);
 			
@@ -39,7 +40,9 @@ public class LightAwareness : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Projects",
+				"Slate",
+				"SlateCore",
+				"ShaderCore"
 			}
 			);
 		
