@@ -14,9 +14,10 @@
 	"Installed": true,
 	"Modules": [
 		{
-			"Name": "LightAwareness",
-			"Type": "Runtime",
-			"LoadingPhase": "PreDefault"
-		}
+		  "Name": "LightAwareness",
+		  "Type": "Runtime",
+          "LoadingPhase": "PostConfigInit",
+          "ShaderDirectoryMappings": {"/Plugin/LightAwareness": "Shaders"}
+        }
 	]
 }

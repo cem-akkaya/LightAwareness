@@ -20,7 +20,7 @@ enum class ELightAwarenessResponderState : uint8
 	ActiveVisible UMETA(DisplayName = "Active Rendered"),
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnLightAwarenessSubsystemRegisteration, bool, RegistrationStatus, AActor*, Registerar, ULightAwarenessComponent*, RegisteredComponent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnLightAwarenessSubsystemRegistration, bool, RegistrationStatus, AActor*, Registerar, ULightAwarenessComponent*, RegisteredComponent);
 
 UCLASS()
 class LIGHTAWARENESS_API ULightAwarenessSubsystem : public UGameInstanceSubsystem
@@ -41,5 +41,5 @@ public:
 	TArray<ULightAwarenessComponent*> GetCurrentLightAwarenessResponders(ELightAwarenessResponderState State);
 
 	UPROPERTY(BlueprintAssignable, Category="MG Interactions Component")
-	FOnLightAwarenessSubsystemRegisteration OnLightAwarenessSubsystemRegisteration;
+	FOnLightAwarenessSubsystemRegistration OnLightAwarenessSubsystemRegisteration;
 };

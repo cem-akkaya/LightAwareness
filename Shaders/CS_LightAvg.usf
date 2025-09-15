@@ -1,0 +1,28 @@
+﻿// Light Awareness System. Cem Akkaya https://www.cemakkaya.com
+// Plugins/LightAwareness/Shaders/CS_LightMax.usf
+
+#include "/Engine/Public/Platform.ush"
+
+Texture2D<float4>        InputTex;
+SamplerState             PointClamp;
+RWStructuredBuffer<uint> OutSum;
+
+int2   InputSize;
+float3 LumaWeights;
+
+// Fixed-point scaling factor: 16.16 format
+static const float kScaleF = 65536.0f;
+
+[numthreads(8,8,1)]
+void CSLightAvg(uint3 DTid : SV_DispatchThreadID)
+{
+	if (DTid.x >= (uint)InputSize.x || DTid.y >= (uint)InputSize.y) return;
+
+	float2 uv  = (float2(DTid.xy) + 0.5) / float2(InputSize);
+	float3 rgb = InputTex.SampleLevel(PointClamp, uv, 0).rgb;
+	float  lum = saturate(dot(rgb, LumaWeights));
+
+	// Convert to fixed-point and accumulate
+	uint fx = (uint)round(lum * kScaleF);
+	InterlockedAdd(OutSum[0], fx);
+}

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "LightAwarenessGpu.h"
 #include "LightAwarenessSubsystem.h"
 #include "Runtime/CoreUObject/Public/UObject/SoftObjectPtr.h"
 #include "Components/ActorComponent.h"
@@ -46,6 +47,13 @@ enum class ELightAwarenessCalculationMethod : uint8
 };
 
 UENUM(BlueprintType)
+enum class ELightAwarenessProcessing : uint8
+{
+	CPU UMETA(DisplayName = "CPU"),
+	GPU UMETA(DisplayName = "GPU"),
+};
+
+UENUM(BlueprintType)
 enum class ELightAwarenessState : uint8
 {
 	Inactive UMETA(DisplayName = "Inactive"),
@@ -74,19 +82,23 @@ public:
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
 
 	/** How many pixels should be searched for? Generally low or optimized setting will work for many */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Sensivity")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="lightening Sensivity")
 	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Low;
 
 	/** In Many cases the light from the top directional should be enough, however, if you are closely using GI to gameplay mechanics can be used both */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Direction")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Sense Direction")
 	ELightAwarenessDetectionMethod LightAwarenessMethod = ELightAwarenessDetectionMethod::Top;
 
 	/** How the component should work and update light status on an owner object. The distance threshold can be set below in settings or in blueprints */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Update Method")
 	ELightAwarenessGetMethod LightAwarenessGetMethod = ELightAwarenessGetMethod::Distance;
 
+	/** Processing Method CPU or GPU, GPU for more async results */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Processing")
+	ELightAwarenessProcessing LightAwarenessProcessing = ELightAwarenessProcessing::GPU;
+
 	/** Return the brightest pixel or average pixels on light awareness gem */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detection Method")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Calculation")
 	ELightAwarenessCalculationMethod LightAwarenessCalculationMethod = ELightAwarenessCalculationMethod::Average ;
 	
 	UPROPERTY(BlueprintReadOnly, Blueprintable, Category= "Light Awareness")
@@ -108,7 +120,7 @@ public:
 
 	/** How much difference should occur in a light threshold to fire an update event can be set to 0 for every minor change */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Threshold", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
-	float LightUpdateStepThreshold = 0.05;
+	float LightUpdateStepThreshold = 0.02;
 
 	/** Owner Actor will have tags starting with this prefix and object name as a suffix */
 	UPROPERTY(EditAnywhere, Category="Light Awareness")
@@ -124,11 +136,10 @@ public:
 	UFUNCTION(CallInEditor, Category="Light Awareness" , DisplayName="Show Light Detector")
 	void ShowLightDetector() const;
 
-	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Status")
-	float GetLightStatus();
+	bool ConsumeGpuReductions(float& OutLightValue);
 
 	UFUNCTION(BlueprintCallable, Category="Light Awareness" , DisplayName="Get Light Status")
-	void GetLightStatusDeferred();
+	void ProcessLight();
 
 	UFUNCTION(BlueprintCallable, Category ="Light Awareness" , DisplayName="Get Light Buffer")
 	TArray<FColor> GetBufferPixels();
@@ -165,11 +176,29 @@ protected:
 	
 	// Array Bottom Rendering Pixels
 	TArray<FColor> RenderBufferPixelsBottom();
+	void KickGpuReductions();
 
 	UPROPERTY()
 	ULightAwarenessSubsystem* LightAwarenessSubsystem;
 
 	ULightAwarenessSubsystem* GetLightAwarenessSubsystem();
+
+	// Warm up Frame Count
+	int32 WarmupFramesRemaining = 3;
+
+	// GPU mailboxes and last-seen epochs (game thread)
+	FLumaMailbox TopMailbox;
+	FLumaMailbox BottomMailbox;
+	int32 TopEpochSeen    = 0;
+	int32 BottomEpochSeen = 0;
+	
+	// Readback handles
+	TUniquePtr<FRHIGPUBufferReadback> TopReadback;
+	TUniquePtr<FRHIGPUBufferReadback> BottomReadback;
+
+	// Processing Gateways
+	void ProcessGPU();
+	void ProcessCPU();
 	
 #if WITH_EDITOR
 	// Editor Preview Changes
