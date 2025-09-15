@@ -53,7 +53,7 @@ Some passages defined with various light sources and dark zones:
 |:--------------------------------------------------------------------:|:--------------------------------------------:|
 | Direct light pass beams showing showing accuracy and responsiveness. | A big soft light showing increments of light and global illumination. |
 
-|                         <img src="Resources/Demo5.gif" width="810"/>                          |
+|                         <img src="Resources/Demo5.gif" width="790"/>                          |
 |:---------------------------------------------------------------------------------------------:|
 | Multiple sources with high sensitivity, omnidirectional detections with on tick calculations. |
 
