@@ -70,7 +70,7 @@ void LightAwarenessGPU::EnqueueMaxLuminanceReduce(
 			// Parameters
 			FLightMaxLumaCS::FParameters* Params = GraphBuilder.AllocParameters<FLightMaxLumaCS::FParameters>();
 			Params->InputSize   = FIntPoint(W, H);
-			Params->LumaWeights = FVector3f(0,0,0);;
+			Params->LumaWeights = FVector3f(1,1,1);
 			Params->PointClamp  = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 			Params->InputTex    = SrcSRV;
 			Params->OutMax      = MaxUAV;
@@ -125,7 +125,7 @@ void LightAwarenessGPU::EnqueueAvgLuminanceReduce(
 
             FLightAvgLumaCS::FParameters* Params = GraphBuilder.AllocParameters<FLightAvgLumaCS::FParameters>();
             Params->InputSize   = FIntPoint(W, H);
-			Params->LumaWeights = FVector3f(0,0,0);;
+			Params->LumaWeights = FVector3f(1,1,1);
             Params->PointClamp  = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
             Params->InputTex    = SrcSRV;
             Params->OutSum      = SumUAV;
