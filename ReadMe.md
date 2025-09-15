@@ -10,11 +10,9 @@
 
 ## Overview
 
-This is an Unreal Engine plugin to detect light conditions on any actor independent of Light Source Type, Screen Effects, and similar.
+Light Awareness is an Unreal Engine plugin that lets any actor detect how much light it is currently exposed to regardless of light type, global illumination, or post-effects.
 
-This plugin is an actor component where snapshots a buffer image from the world with given variables. Process the buffer
-image pixels from the memory and brute forces the brightest pixel in the light gem. This plugin is created on an ingenious method of [Dark Mod](https://www.thedarkmod.com/main/) indie game,
-re-creating approach in a more accurate calculation in Unreal 5+. 
+The component captures a small scene buffer, processes pixels (CPU or GPU), and returns a brightness value that can be used for stealth mechanics, AI awareness, dynamic material effects, and more.
 
 You can define the processing method and efficiency on the component and on the blueprint level depending on the usage.
 You can define your own rules in blueprints or C++ to get light status from the component, or you can get the buffer image array on the tick to process further calculations
@@ -31,34 +29,33 @@ If you have suggestions, questions or need help to use, you can always contact [
 If you want to contribute, feel free to create a pull request.
 
 ## Features
-
 - Detection of light status on any actor.
+- Choice between **CPU or GPU** processing modes.
+- Configurable **luminance weights** (Rec.709, average, or custom).
 - Light detection sensitivity and optimization methods.
 - Light detection direction choice for incoming sources.
 - Lumen and global illumination support.
-- Debug views and light thresholds for your game's global lightening conditions.
 - Ability to integrate into any actor on runtime.
 - Ability to get light and buffer pixels from blueprints.
 - Subsystem for accessing light status data and status update events.
 - Integrated update methods for usage if suitable for your project as distance update.
+- Debug views and light thresholds for your game's global lighting conditions.
 
 ## Examples
 
-Some passages defined with various light sources and dark zones:\
-<img src="https://cemakkaya.com/ImageHost/example1.gif" alt="Animated GIF" width="200"/>
-<img src="https://cemakkaya.com/ImageHost/example2.gif" alt="Animated GIF" width="200"/>
-<img src="https://cemakkaya.com/ImageHost/example3.gif" alt="Animated GIF" width="200"/>
-<img src="https://cemakkaya.com/ImageHost/example4.gif" alt="Animated GIF" width="200"/>
+Some passages defined with various light sources and dark zones:
 
+|              <img src="Resources/Demo1.gif" width="370"/>               | <img src="Resources/Demo2.gif" width="370"/> |
+|:-----------------------------------------------------------------------:|:--------------------------------------------:|
+| A room with soft spotlight sources showing accuracy and responsiveness. | Directional light and soft point light example. |
 
-Some examples of the light awareness plugin in action:
-- A room with soft spotlight sources showing accuracy.
-- Directional light and soft point light example.
-- Direct light beams showing responsiveness.
-- A big soft light showing increments of light and global illumination.
+|  <img src="Resources/Demo3.gif" width="370"/>   | <img src="Resources/Demo4.gif" width="370"/> |
+|:-----------------------------------------------:|:--------------------------------------------:|
+| Direct light pass beams showing responsiveness. | A big soft light showing increments of light and global illumination. |
+
 
 ## Installation
-<img src="https://cemakkaya.com/ImageHost/plugin.jpg" alt="plugin-light-awareness" width="830"/>
+<img src="Resources/ss1.jpg" alt="plugin-light-awareness" width="830"/>
 
 Install it like any other Unreal Engine plugin.
 - Download and place the LightAwareness Plugin under: Drive:\YOURPROJECTFOLDER\Plugins\LightAwareness
@@ -71,10 +68,15 @@ Install it like any other Unreal Engine plugin.
 - - Download [this content](https://www.cemakkaya.com/FileHost/LightAwarenessContentFallback.zip) and overwrite to Drive:\YOURPROJECTFOLDER\Plugins\LightAwareness\Content
 - - Rebuild your project, disable plugin if necessary
 
-<img src="https://cemakkaya.com/ImageHost/node.jpg" alt="plugin-light-awareness" width="830"/>
+### Quick Start
+1. Add a **LightAwareness** component to your actor.
+2. Adjust **Scale, Direction, Sensitivity** in the Details panel.
+3. Call **Get Light Status** in Blueprint or C++ to get brightness values or simply bind to the event `OnLightAwarenessComponentUpdated`.  
 
-## How to use it
-<img src="https://cemakkaya.com/ImageHost/inspector.jpg" alt="inspector-light-awareness" width="830"/>
+<img src="Resources/ss2.jpg" alt="plugin-light-awareness" width="830"/>
+
+## Component Details
+<img src="Resources/ss3.jpg" alt="plugin-light-awareness" width="830"/>
 
 - On your actor add the component "LightAwareness".
 - Define the light gem using components scaling and offsets to your needs.
@@ -83,8 +85,50 @@ Install it like any other Unreal Engine plugin.
 - Call Subsystem update event for accessing light changes in large-scale environments and utilization.
 - Engine Versions Under 5.2 Should use "Engine Version Fallback = true"
 
+### Component Parameters
+Below variables are exposed in the Details panel of LightAwarenessComponent. They control how the component samples and calculates light.
+
+#### Scale & Offset
+- **Light Detector Scale**
+    - Defines the size of the invisible detection “gem” mesh.
+    - Larger scale captures a wider sample of the surrounding light.
+- **Light Detector Offset**
+    - Shifts the detector relative to the owning actor.
+    - Useful for characters (e.g., move detector above the head).
+
+#### Sensitivity
+- **Optimized**: balanced performance and accuracy (8×8 buffer).
+- **Low**: fastest but coarsest (4×4 buffer).
+- **High**: slowest but most detailed (16×16 buffer).  
+  Controls how many pixels are sampled from the render target.
+
+#### Direction
+- **Top**: only captures light from above the actor.
+- **Bottom**: only captures light from below the actor.
+- **Both**: captures from both directions for maximum accuracy.  
+  Useful if you care about GI, floor bounce, or overhead light.
+
+#### Update Method
+- **Manual**: light status only updates when explicitly requested via Blueprint/C++.
+- **Distance**: updates when the actor moves more than the set threshold.
+- **Every Frame**: updates every tick (highest cost).  
+  Choose based on performance vs responsiveness needs.
+
+#### Light Processing
+- The component now supports both **CPU** and **GPU** based light calculations:
+- **CPU**: synchronous, simpler, lower overhead for few actors.
+- **GPU**: asynchronous compute shaders, better for many actors, one-frame delay.  
+  This is the main processing backend.
+
+#### Light Calculation
+- **Brightest Pixel**: picks the single brightest pixel in the buffer.
+    - Best for stealth/spotlight detection.
+- **Average Pixels**: averages all pixels.
+    - Best for smooth ambient light estimation.
+
+
 ### Light Awareness Subsystem
-<img src="https://cemakkaya.com/ImageHost/subsystem.jpg" alt="inspector-light-awareness" width="830"/>
+<img src="Resources/ss4.jpg" alt="plugin-light-awareness" width="830"/>
 
 - You can access LightAwareness GameInstance subsystem from blueprints
 - Subsystem provides events when an actor with component registers, unregisters, or updates its status.
@@ -124,7 +168,11 @@ A demo with network enabled plugin in action can be found below link.
 
 </details>
 
-
+### Known Limitations / Tips
+- GPU processing introduces a one-frame delay (consume last frame, kick next frame).
+- Colored lights may appear weaker with perceptual weights; switch to average or custom weights if needed.
+- For best performance, avoid enabling "Every Tick" updates on a large number of actors.
+- Under UE < 5.4, enable `Engine Version Fallback` due to orthographic capture issues.
 
 ## License
 
