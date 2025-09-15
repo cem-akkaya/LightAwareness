@@ -22,6 +22,7 @@ ULightAwarenessComponent::ULightAwarenessComponent(const FObjectInitializer& Obj
 {
 	// Component Settings
 	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
 	UActorComponent::SetAutoActivate(true);
 	SetIsReplicatedByDefault(false);
 	SetIsReplicated(false);
