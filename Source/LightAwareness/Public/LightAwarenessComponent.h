@@ -111,8 +111,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
 	bool LightAwarenessFallback;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Replicate Render Targets")
-	bool LightAwarenessIsReplicatedRenderTargets;
+	/** Runtime Generated Render Targets, necessary for networking and light computations are seperated for each component. Close if you are using single or timely updated component queries. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Runtime Render Targets")
+	bool LightAwarenessIsRuntimeRenderTargets = true;
 
 	/** In too bright environments material can be darker 0 or lighter 1, depending on the situation. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Global Sensitivity", meta = (ClampMin = "0", ClampMax = "1", UIMin = "0", UIMax = "1"))
@@ -230,11 +231,11 @@ protected:
 	UMaterialInstanceDynamic* LightAwarenessMaterialDynamic;
 
 	// Render Target Top
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Light Awareness")
 	UTextureRenderTarget2D* LightAwarenessRenderTargetTop;
 
 	// Render Target Bottom
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Light Awareness")
 	UTextureRenderTarget2D* LightAwarenessRenderTargetBottom;
 	
 	// Render Target Resource

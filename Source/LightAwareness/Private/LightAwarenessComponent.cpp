@@ -144,7 +144,7 @@ void ULightAwarenessComponent::BeginPlay()
 	SetupOwnerOtherComponents();
 	
 	// If user prefers setup new render targets that are replicated
-	if (LightAwarenessIsReplicatedRenderTargets)
+	if (LightAwarenessIsRuntimeRenderTargets)
 	{
 		// Create A New Render Target Top
 		UTextureRenderTarget2D* LARenderTargetTop = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_RGBA8);
@@ -153,6 +153,10 @@ void ULightAwarenessComponent::BeginPlay()
 		// Create A New Render Target Top
 		UTextureRenderTarget2D* LARenderTargetBottom = UKismetRenderingLibrary::CreateRenderTarget2D(this, 16, 16, RTF_RGBA8);
 		sceneCaptureComponentBottom->TextureTarget = LARenderTargetBottom;
+
+		// Update Pointers to Static RT
+		LightAwarenessRenderTargetTop    = LARenderTargetTop;
+		LightAwarenessRenderTargetBottom = LARenderTargetBottom;
 	}
 	
 	// Be sure that the component visibility are set in runtime
