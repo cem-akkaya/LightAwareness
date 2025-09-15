@@ -89,7 +89,7 @@ void ULightAwarenessComponent::SetComponentState(ELightAwarenessState State)
 
 void ULightAwarenessComponent::CreateOwnerRenderingStateChecker()
 {
-	//Create timer and delegate for rendering state checks
+	//Create a timer and delegate for rendering state checks
 	FTimerDelegate Delegate;
 	Delegate.BindUFunction(this, "GetRenderingState"); 
 	
@@ -144,7 +144,7 @@ void ULightAwarenessComponent::BeginPlay()
 	// Hide possible other components interfering buffer image
 	SetupOwnerOtherComponents();
 	
-	// If user prefers setup new render targets that are replicated
+	// If the user prefers to set up new render targets that runtime generated
 	if (LightAwarenessIsRuntimeRenderTargets)
 	{
 		// Create A New Render Target Top
@@ -160,7 +160,7 @@ void ULightAwarenessComponent::BeginPlay()
 		LightAwarenessRenderTargetBottom = LARenderTargetBottom;
 	}
 	
-	// Be sure that the component visibility are set in runtime
+	// Be sure that the component visibility is set in runtime
 	LightAwarenessMesh->SetVisibility(true);
 	LightAwarenessMesh->SetVisibleInSceneCaptureOnly(true);
 	LightAwarenessMesh->SetHiddenInSceneCapture(false);
@@ -174,7 +174,7 @@ void ULightAwarenessComponent::BeginPlay()
 	FTimerHandle SettingsTimer;
 	GetWorld()->GetTimerManager().SetTimer(SettingsTimer, this, &ULightAwarenessComponent::UpdateSettings, 1.0f, false);
 
-	// Looping Timer for component checking its rendering state;
+	// Looping Timer for a component checking its rendering state;
 	CreateOwnerRenderingStateChecker();
 }
 
@@ -187,7 +187,7 @@ void ULightAwarenessComponent::BeginDestroy()
 
 void ULightAwarenessComponent::SetupOwnerOtherComponents() const
 {
-	// Clarify other components that can interfere light detection
+	// Clarify other components that can interfere with light detection
 	TArray<UStaticMeshComponent*> AvailableOwnerStaticMeshComponents;
 	GetOwner()->GetComponents<UStaticMeshComponent>(AvailableOwnerStaticMeshComponents);
 
@@ -200,7 +200,7 @@ void ULightAwarenessComponent::SetupOwnerOtherComponents() const
 		}	
 	}
 	
-	// Clarify other components that can interfere light detection
+	// Clarify other components that can interfere with light detection
 	TArray<USkeletalMeshComponent*> AvailableOwnerSkeletalMeshComponents;
 	GetOwner()->GetComponents<USkeletalMeshComponent>(AvailableOwnerSkeletalMeshComponents);
 
@@ -232,7 +232,7 @@ ULightAwarenessSubsystem* ULightAwarenessComponent::GetLightAwarenessSubsystem()
 
 void ULightAwarenessComponent::SpawnRenderMesh()
 {
-	// Create mesh component
+	// Create a mesh component
 	LightAwarenessMesh = NewObject <UStaticMeshComponent>(this,UStaticMeshComponent::StaticClass(), TEXT("LightAwarenessDetector(Created)"));
 	LightAwarenessMesh->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	LightAwarenessMesh->SetMobility(EComponentMobility::Movable);
@@ -294,7 +294,7 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->TextureTarget->SizeY = 16; // 16 Min Effective Shadow Catcher size for any condition
 
 
-	// Lighting + shadows ON, everything "post" OFF
+	// Lighting and shadows ON, everything at post-process OFF
 	auto& F = sceneCaptureComponents->ShowFlags;
 	F.SetLighting(true);
 	F.SetMaterials(true);
@@ -315,7 +315,7 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	F.SetEyeAdaptation(false);  
 	
 	// Enable Lumen For global illumination effects and reflections
-	// Exposure is auto however we have setting for material intensity, rather than making exposure manual use material intensity as workaround.
+	// Exposure is auto, however, we have setting for material intensity, rather than making exposure manual use material intensity as workaround.
 	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
 	sceneCaptureComponents->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
 
@@ -333,10 +333,10 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	// Engine Fallback
 	if (LightAwarenessFallback)
 	{
-		// Scene Capture under 5.2 Orthographic is problematic generally not rendering shadows at all as known issue.
+		// Scene Capture under 5.2 Orthographic is problematic, generally not rendering shadows at all as a known issue.
 		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Perspective;
-		auto CompansatedLoc = Location/2;
-		sceneCaptureComponents->SetRelativeLocation(CompansatedLoc);
+		auto CompensatedLoc = Location/2;
+		sceneCaptureComponents->SetRelativeLocation(CompensatedLoc);
 	}
 	else
 	{
@@ -415,9 +415,9 @@ TArray<FColor> ULightAwarenessComponent::RenderBufferPixelsBottom()
 void ULightAwarenessComponent::ProcessLight()
 {
 
-	// Kick-starts process for GPU or CPU.
-	// GPU This is done in a separate thread to avoid blocking the game thread. CPU is also kinda async but not fully.
-	// Starts the processes and if CPU uses GetBufferPixels() , on GPU sends to wrapper with avg or max EnqueueConsumeAvgIfReady(), pushes to shader pass then when readback is ready mailed back into TopMailbox/TopMailbox
+	// Kick-starts the process for GPU or CPU.
+	// GPU This is done in a separate thread to avoid blocking the game thread. CPU is also kinda async but not full.
+	// Starts the processes and if CPU uses GetBufferPixels() , on GPU sends to wrapper with avg or max EnqueueConsumeAvgIfReady(), pushes to shader pass, then when readback is ready mailed back into TopMailbox/TopMailbox
 	switch (LightAwarenessProcessing)
 	{
 	case ELightAwarenessProcessing::GPU:
@@ -487,7 +487,7 @@ void ULightAwarenessComponent::ProcessCPU()
 	// Get Buffer Image Refresh
 	GetBufferPixels();
 	
-	// Start async task for buffer processing
+	// Start an async task for buffer processing, at least unblocking
 	if (BufferImage.Num() > 0)
 	{
 		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this]()

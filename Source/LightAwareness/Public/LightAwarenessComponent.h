@@ -82,7 +82,7 @@ public:
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
 
 	/** How many pixels should be searched for? Generally low or optimized setting will work for many */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="lightening Sensivity")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Lightening Sensivity")
 	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Low;
 
 	/** In Many cases the light from the top directional should be enough, however, if you are closely using GI to gameplay mechanics can be used both */
