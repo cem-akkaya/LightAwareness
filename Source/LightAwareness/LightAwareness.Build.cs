@@ -42,7 +42,6 @@ public class LightAwareness : ModuleRules
 			{
 				"Slate",
 				"SlateCore",
-				"ShaderCore"
 			}
 			);
 		
