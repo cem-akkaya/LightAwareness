@@ -49,10 +49,13 @@ Some passages defined with various light sources and dark zones:
 |:-----------------------------------------------------------------------:|:--------------------------------------------:|
 | A room with soft spotlight sources showing accuracy and responsiveness. | Directional light and soft point light example. |
 
-|  <img src="Resources/Demo3.gif" width="370"/>   | <img src="Resources/Demo4.gif" width="370"/> |
-|:-----------------------------------------------:|:--------------------------------------------:|
-| Direct light pass beams showing responsiveness. | A big soft light showing increments of light and global illumination. |
+|             <img src="Resources/Demo3.gif" width="370"/>             | <img src="Resources/Demo4.gif" width="370"/> |
+|:--------------------------------------------------------------------:|:--------------------------------------------:|
+| Direct light pass beams showing showing accuracy and responsiveness. | A big soft light showing increments of light and global illumination. |
 
+|                         <img src="Resources/Demo5.gif" width="810"/>                          |
+|:---------------------------------------------------------------------------------------------:|
+| Multiple sources with high sensitivity, omnidirectional detections with on tick calculations. |
 
 ## Installation
 <img src="Resources/ss1.jpg" alt="plugin-light-awareness" width="830"/>
