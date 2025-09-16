@@ -187,29 +187,21 @@ void ULightAwarenessComponent::BeginDestroy()
 
 void ULightAwarenessComponent::SetupOwnerOtherComponents() const
 {
-	// Clarify other components that can interfere with light detection
-	TArray<UStaticMeshComponent*> AvailableOwnerStaticMeshComponents;
-	GetOwner()->GetComponents<UStaticMeshComponent>(AvailableOwnerStaticMeshComponents);
-
-	// Hide all other static mesh components
-	if (!AvailableOwnerStaticMeshComponents.IsEmpty())
+	if (GetOwner())
 	{
-		for (const auto AvailableOwnerComponent : AvailableOwnerStaticMeshComponents)
-		{
-			AvailableOwnerComponent->SetHiddenInSceneCapture(true);
-		}	
-	}
-	
-	// Clarify other components that can interfere with light detection
-	TArray<USkeletalMeshComponent*> AvailableOwnerSkeletalMeshComponents;
-	GetOwner()->GetComponents<USkeletalMeshComponent>(AvailableOwnerSkeletalMeshComponents);
+		TArray<UPrimitiveComponent*> AllComps;
+		GetOwner()->GetComponents(AllComps);
 
-	// Hide all other skeletal mesh components
-	if (!AvailableOwnerSkeletalMeshComponents.IsEmpty())
-	{
-		for (const auto AvailableOwnerSkeletalMeshComponent : AvailableOwnerSkeletalMeshComponents)
+		for (auto* Comp : AllComps)
 		{
-			AvailableOwnerSkeletalMeshComponent->SetHiddenInSceneCapture(true);
+			// Don’t hide the gem
+			if (Comp == LightAwarenessMesh) 
+				continue;
+
+			sceneCaptureComponentTop->HiddenComponents.Add(Comp);
+			sceneCaptureComponentBottom->HiddenComponents.Add(Comp);
+
+			UE_LOG(LogTemp, Display, TEXT("LightAwareness : Hiding %s from Scene Capture"), *Comp->GetName());
 		}
 	}
 }
@@ -282,12 +274,11 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->OrthoWidth = 100;
 	sceneCaptureComponents->MaxViewDistanceOverride = 100;
 	sceneCaptureComponents->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_RenderScenePrimitives;
-	sceneCaptureComponents->ShowOnlyComponents.Add(LightAwarenessMesh);
 	sceneCaptureComponents->bUseRayTracingIfEnabled = true;
 	sceneCaptureComponents->CompositeMode = SCCM_Overwrite;
 	sceneCaptureComponents->ShowFlags.Lighting = true;
 	sceneCaptureComponents->ShowFlags.DynamicShadows = true;
-	sceneCaptureComponents->CaptureSource = SCS_FinalColorHDR;
+	sceneCaptureComponents->CaptureSource = SCS_FinalColorLDR;
 	sceneCaptureComponents->TextureTarget = RenderTarget;
 	sceneCaptureComponents->bAlwaysPersistRenderingState = true;
 	sceneCaptureComponents->TextureTarget->SizeX = 16; // 16 Min Effective Shadow Catcher size for any condition
@@ -298,9 +289,8 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	auto& F = sceneCaptureComponents->ShowFlags;
 	F.SetLighting(true);
 	F.SetMaterials(true);
-	F.SetGlobalIllumination(LightAwarenessGI);      
-
-	F.SetPostProcessing(false);
+	F.SetGlobalIllumination(LightAwarenessGI ? true : false);
+	F.SetPostProcessing(true);
 	F.SetAntiAliasing(false);
 	F.SetMotionBlur(false);
 	F.SetDepthOfField(false);
@@ -312,23 +302,35 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	F.SetVolumetricFog(false);
 	F.SetTranslucency(false);
 	F.SetSeparateTranslucency(false);
-	F.SetEyeAdaptation(false);  
+	F.SetEyeAdaptation(false);
+
+	// Post Process Exposure
+	auto& PP = sceneCaptureComponents->PostProcessSettings;
+	
+	PP.bOverride_AutoExposureMethod = true;
+	PP.AutoExposureMethod = EAutoExposureMethod::AEM_MAX;
+
+	// Clamp min/max to 1 so its stable
+	PP.bOverride_AutoExposureMaxBrightness = false;
+	PP.AutoExposureMinBrightness = 1.0f;
 	
 	// Enable Lumen For global illumination effects and reflections
 	// Exposure is auto, however, we have setting for material intensity, rather than making exposure manual use material intensity as workaround.
-	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
-	sceneCaptureComponents->PostProcessSettings.DynamicGlobalIlluminationMethod = EDynamicGlobalIlluminationMethod::Lumen;
+	sceneCaptureComponents->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = true;
+	sceneCaptureComponents->PostProcessSettings.DynamicGlobalIlluminationMethod =
+		LightAwarenessGI ? EDynamicGlobalIlluminationMethod::Lumen
+						 : EDynamicGlobalIlluminationMethod::None;
 
 	sceneCaptureComponents->bCaptureEveryFrame = false;
 	sceneCaptureComponents->bConsiderUnrenderedOpaquePixelAsFullyTranslucent = true;
 
 	// Cleanup RenderTarget
 	check(RenderTarget != nullptr);
-	sceneCaptureComponents->TextureTarget->RenderTargetFormat = RTF_RGBA16f;
+	sceneCaptureComponents->TextureTarget->RenderTargetFormat = RTF_RGBA8;
 	sceneCaptureComponents->TextureTarget->ClearColor = FColor::Black;
 	sceneCaptureComponents->TextureTarget->CompressionSettings = TC_VectorDisplacementmap;
-	sceneCaptureComponents->TextureTarget->SRGB = 0;
-	sceneCaptureComponents->DetailMode = DM_Medium;
+	sceneCaptureComponents->TextureTarget->SRGB = 1;
+	sceneCaptureComponents->DetailMode = DM_Low;
 	
 	// Engine Fallback
 	if (LightAwarenessFallback)
@@ -683,12 +685,7 @@ void ULightAwarenessComponent::UpdateSettings() const
 	{
 		LightAwarenessMaterialDynamic->SetScalarParameterValue("MatSensitivity", LightAwarenessMaterialSensitivity);
 	}
-	if (sceneCaptureComponentTop)
-	{
-		sceneCaptureComponentTop->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;
-		sceneCaptureComponentBottom->PostProcessSettings.bOverride_DynamicGlobalIlluminationMethod = LightAwarenessGI;	
-	}
-
+	
 #if WITH_EDITOR
 	LightAwarenessMaterial->SetScalarParameterValueEditorOnly("MatSensitivity", LightAwarenessMaterialSensitivity);
 #endif

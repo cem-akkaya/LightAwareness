@@ -105,7 +105,7 @@ public:
 	ELightAwarenessState LightAwarenessComponentState = ELightAwarenessState::Inactive;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
-	bool LightAwarenessGI;
+	bool LightAwarenessGI = false;
 
 	/** If the Engine version is less than 5.4, use it for detecting global illumination. Can be ignored if GI is not required. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
