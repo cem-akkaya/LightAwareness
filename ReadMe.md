@@ -58,9 +58,9 @@ Some passages defined with various light sources and dark zones:
 | Multiple sources with high sensitivity, omnidirectional detections with on tick calculations. |
 
 
-|                  <img src="Resources/Demo6.gif" width="790"/>                   |
-|:-------------------------------------------------------------------------------:|
-| Multiple moving sources with different colors demonstrating luminance accuracy. |
+|                          <img src="Resources/Demo6.gif" width="790"/>                           |
+|:-----------------------------------------------------------------------------------------------:|
+| Multiple moving sources with different colors demonstrating luminance accuracy between sources. |
 
 ## Installation
 <img src="Resources/ss1.jpg" alt="plugin-light-awareness" width="830"/>
