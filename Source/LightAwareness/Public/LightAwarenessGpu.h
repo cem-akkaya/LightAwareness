@@ -15,6 +15,7 @@ struct FLumaMailbox
 	TAtomic<int32>  Epoch{0}; 
 };
 
+class FRHIGPUBufferReadback;
 
 // Global compute shader wrapper Max Light
 class FLightMaxLumaCS : public FGlobalShader
