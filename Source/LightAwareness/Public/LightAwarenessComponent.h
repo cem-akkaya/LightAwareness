@@ -13,7 +13,10 @@
 #include "Engine/StaticMesh.h"
 #include "TextureResource.h"
 #include "Materials/Material.h"
+#include "Templates/PimplPtr.h"
 #include "LightAwarenessComponent.generated.h"
+
+struct FLightAwarenessComponentImpl;
 
 UENUM(BlueprintType)
 enum class ELightAwarenessSensitivity : uint8
@@ -71,18 +74,21 @@ class LIGHTAWARENESS_API ULightAwarenessComponent : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	ULightAwarenessComponent(const FObjectInitializer& ObjectInitializer);
+	ULightAwarenessComponent(FVTableHelper& Helper);
+	
+	virtual ~ULightAwarenessComponent() override;
 
 	UPROPERTY(BlueprintAssignable, Category="Light Awareness - Events")
 	FOnLightAwarenessComponentUpdated OnLightAwarenessComponentUpdated;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Scale", meta = (ClampMin = "0.1", ClampMax = "10", UIMin = "0.1", UIMax = "10"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Scale", meta = (ClampMin = "0.2", ClampMax = "10", UIMin = "0.2", UIMax = "10"))
 	float LightAwarenessDetectorScale = 0.5;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Light Detector Offset", meta = (ClampMin = "-500", ClampMax = "500", UIMin = "-500", UIMax = "500"))
 	FVector LightAwarenessDetectorOffset = FVector(0,0,0);
 
 	/** How many pixels should be searched for? Generally low or optimized setting will work for many */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Lightening Sensivity")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Lightening Sensivity", meta = (EditCondition = "!LightAwarenessFallback"))
 	ELightAwarenessSensitivity LightAwarenessSensitivity = ELightAwarenessSensitivity::Low;
 
 	/** In Many cases the light from the top directional should be enough, however, if you are closely using GI to gameplay mechanics can be used both */
@@ -107,7 +113,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Detect Global Illumination")
 	bool LightAwarenessGI = false;
 
-	/** If the Engine version is less than 5.4, use it for detecting global illumination. Can be ignored if GI is not required. */
+	/** Fallback for unreliable orthographic shadows. If point lights bleed through walls or shadows appear missing, enable this to switch to a high-quality Perspective capture. Note: This mode renders the scene using a separate SceneRenderer with MainView priority but at a fraction of the player's resolution (using a divisor of 20). This ensures high-priority shadows and lighting (like Lumen GI) are calculated with high fidelity while significantly reducing the pixel workload compared to a full-resolution pass. Required for Global Illumination (GI) on Engine versions < 5.4. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Light Awareness" , DisplayName="Engine Version Fallback")
 	bool LightAwarenessFallback;
 
@@ -187,16 +193,9 @@ protected:
 	// Warm up Frame Count
 	int32 WarmupFramesRemaining = 3;
 
-	// GPU mailboxes and last-seen epochs (game thread)
-	FLumaMailbox TopMailbox;
-	FLumaMailbox BottomMailbox;
-	int32 TopEpochSeen    = 0;
-	int32 BottomEpochSeen = 0;
+	// Pimpl for non-UObject members
+	TPimplPtr<FLightAwarenessComponentImpl> Impl;
 	
-	// Readback handles
-	TUniquePtr<FRHIGPUBufferReadback> TopReadback;
-	TUniquePtr<FRHIGPUBufferReadback> BottomReadback;
-
 	// Processing Gateways
 	void ProcessGPU();
 	void ProcessCPU();
@@ -262,11 +261,13 @@ protected:
 	// Editor Settings of Detector
 	void UpdateSettings() const;
 
-	// Scene Capture Setup
+	/** Updates Scene Capture locations based on current mesh bounds */
+	void UpdateSceneCaptureLocations() const;
+
 	void SetupSceneCapture();
 
 	// Define Capture Settings
-	void SetupSceneCaptureSettings(USceneCaptureComponent2D* sceneCaptureComponents, UTextureRenderTarget2D* RenderTarget, const FVector& Location, const FRotator& Rotation) const;
+	void SetupSceneCaptureSettings(USceneCaptureComponent2D* sceneCaptureComponents, UTextureRenderTarget2D* RenderTarget, const FRotator& Rotation) const;
 
 	// Render Target Variables
 	int32 RenderWidth;

@@ -14,11 +14,25 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Templates/PimplPtr.h"
+#include "RHIGPUReadback.h"
 
 using namespace LightAwarenessGPU;
 
+struct FLightAwarenessComponentImpl
+{
+	FLumaMailbox TopMailbox;
+	FLumaMailbox BottomMailbox;
+	int32 TopEpochSeen    = 0;
+	int32 BottomEpochSeen = 0;
+	
+	TUniquePtr<FRHIGPUBufferReadback> TopReadback;
+	TUniquePtr<FRHIGPUBufferReadback> BottomReadback;
+};
+
 ULightAwarenessComponent::ULightAwarenessComponent(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
+, Impl(MakePimpl<FLightAwarenessComponentImpl>())
 {
 	// Component Settings
 	PrimaryComponentTick.bCanEverTick = true;
@@ -42,6 +56,15 @@ ULightAwarenessComponent::ULightAwarenessComponent(const FObjectInitializer& Obj
 	// Refer to Render Targets
 	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> RenderTargetAssetReferralBottom(TEXT("/Script/Engine.TextureRenderTarget2D'/LightAwareness/LightAwarenessBottom_RT.LightAwarenessBottom_RT'"));
 	LightAwarenessRenderTargetBottom = RenderTargetAssetReferralBottom.Object;
+}
+
+ULightAwarenessComponent::ULightAwarenessComponent(FVTableHelper& Helper)
+	: Super(Helper)
+{
+}
+
+ULightAwarenessComponent::~ULightAwarenessComponent()
+{
 }
 
 void ULightAwarenessComponent::OnComponentCreated()
@@ -165,17 +188,53 @@ void ULightAwarenessComponent::BeginPlay()
 	LightAwarenessMesh->SetVisibleInSceneCaptureOnly(true);
 	LightAwarenessMesh->SetHiddenInSceneCapture(false);
 	
-	// Recalculate widths
-	float LightAwarenessMeshBounds = LightAwarenessMesh->GetStaticMesh()->GetBounds().BoxExtent.Length()/2;
-	sceneCaptureComponentTop->OrthoWidth = LightAwarenessMeshBounds;
-	sceneCaptureComponentBottom->OrthoWidth = LightAwarenessMeshBounds;
-
-	// Ensure Settings
-	FTimerHandle SettingsTimer;
-	GetWorld()->GetTimerManager().SetTimer(SettingsTimer, this, &ULightAwarenessComponent::UpdateSettings, 1.0f, false);
+	// Ensure Settings and Scene Capture locations are applied immediately on BeginPlay
+	UpdateSettings();
 
 	// Looping Timer for a component checking its rendering state;
 	CreateOwnerRenderingStateChecker();
+}
+
+void ULightAwarenessComponent::UpdateSceneCaptureLocations() const
+{
+	if (!LightAwarenessMesh || !sceneCaptureComponentTop || !sceneCaptureComponentBottom)
+	{
+		return;
+	}
+
+	// Use the known approximate dimensions of the octahedron mesh: 200x200x261
+	// Extents are half the dimensions: 100, 100, 130.5
+	const FVector BaseExtent(100.0f, 100.0f, 130.5f);
+	const FVector BaseOrigin(0.0f, 0.0f, 0.0f); 
+
+	FVector ScaledExtent = BaseExtent * LightAwarenessDetectorScale;
+	FVector ScaledOrigin = BaseOrigin * LightAwarenessDetectorScale;
+
+	// We want to frame the octahedron's projection on the XY plane.
+	float MaxExtentXY = FMath::Max(ScaledExtent.X, ScaledExtent.Y);
+
+	float LightAwarenessMeshBounds = MaxExtentXY;
+	FVector MeshOrigin = ScaledOrigin;
+
+	sceneCaptureComponentTop->OrthoWidth = LightAwarenessMeshBounds;
+	sceneCaptureComponentBottom->OrthoWidth = LightAwarenessMeshBounds;
+
+	float DistanceZ = 150.0f;
+	if (LightAwarenessFallback)
+	{
+		// Calculate precise framing distance for perspective FOV 60
+		const float HalfFOVRad = FMath::DegreesToRadians(60.0f * 0.5f);
+		const float TanHalfFOV = FMath::Tan(HalfFOVRad);
+		
+		// Use MaxExtentXY as the radius to frame the footprint
+		DistanceZ = MaxExtentXY / TanHalfFOV;
+		
+		// Ensure a minimum distance to avoid near-plane clipping
+		DistanceZ = FMath::Max(DistanceZ, 10.0f);
+	}
+
+	sceneCaptureComponentTop->SetRelativeLocation(MeshOrigin + FVector(0, 0, DistanceZ));
+	sceneCaptureComponentBottom->SetRelativeLocation(MeshOrigin + FVector(0, 0, -DistanceZ));
 }
 
 void ULightAwarenessComponent::BeginDestroy()
@@ -232,9 +291,10 @@ void ULightAwarenessComponent::SpawnRenderMesh()
 	LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
 	LightAwarenessMesh->SetStaticMesh(OctahedronMesh);
 	LightAwarenessMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	LightAwarenessMesh->CastShadow = true;
-	LightAwarenessMesh->bSelfShadowOnly = true;
-
+	LightAwarenessMesh->CastShadow = false;
+	LightAwarenessMesh->bSelfShadowOnly = false;
+	LightAwarenessMesh->SetAffectDistanceFieldLighting(false);
+	
 	// Create and set material
 	LightAwarenessMaterialDynamic = UMaterialInstanceDynamic::Create(LightAwarenessMaterial, this);
 	LightAwarenessMesh->SetMaterial(0, LightAwarenessMaterialDynamic);
@@ -260,11 +320,11 @@ void ULightAwarenessComponent::SetupSceneCapture()
 	sceneCaptureComponentBottom->AttachToComponent(LightAwarenessMesh, FAttachmentTransformRules::KeepRelativeTransform);
 
 	// Use constructor defined target. This is generally OK for networking too if run in separate processes
-	SetupSceneCaptureSettings(sceneCaptureComponentTop, LightAwarenessRenderTargetTop, FVector (0,0,150), FRotator (-90,0,0));
-	SetupSceneCaptureSettings(sceneCaptureComponentBottom, LightAwarenessRenderTargetBottom, FVector (0,0,-150) ,FRotator (90,0,0));
+	SetupSceneCaptureSettings(sceneCaptureComponentTop, LightAwarenessRenderTargetTop, FRotator (-90,0,0));
+	SetupSceneCaptureSettings(sceneCaptureComponentBottom, LightAwarenessRenderTargetBottom, FRotator (90,0,0));
 }
 
-void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2D* sceneCaptureComponents, UTextureRenderTarget2D* RenderTarget, const FVector& Location, const FRotator& Rotation) const
+void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2D* sceneCaptureComponents, UTextureRenderTarget2D* RenderTarget, const FRotator& Rotation) const
 {
 	// Setup Scene Capture
 	sceneCaptureComponents->SetRelativeRotation(Rotation);
@@ -272,19 +332,31 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	sceneCaptureComponents->SetHiddenInGame(false);
 	sceneCaptureComponents->bCaptureOnMovement = false;
 	sceneCaptureComponents->OrthoWidth = 100;
-	sceneCaptureComponents->MaxViewDistanceOverride = 100;
+	sceneCaptureComponents->MaxViewDistanceOverride = 1000;
 	sceneCaptureComponents->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_RenderScenePrimitives;
 	sceneCaptureComponents->bUseRayTracingIfEnabled = true;
 	sceneCaptureComponents->CompositeMode = SCCM_Overwrite;
 	sceneCaptureComponents->ShowFlags.Lighting = true;
 	sceneCaptureComponents->ShowFlags.DynamicShadows = true;
+
+	if (LightAwarenessFallback)
+	{
+		// This is highly costly, however, it literally bypasses resolution and renders game again with player view resolutions.
+		// Thus shadows in higher level priority are calculated accurately, as a result, have higher accuracy with the cost of gpu.
+		sceneCaptureComponents->bRenderInMainRenderer = true;
+		sceneCaptureComponents->bMainViewFamily = true;
+		sceneCaptureComponents->bMainViewResolution = true;
+		sceneCaptureComponents->MainViewResolutionDivisor = 20;
+	}
+
+	sceneCaptureComponents->ShowFlags.GlobalIllumination = LightAwarenessGI;
+	sceneCaptureComponents->ShowFlags.LumenGlobalIllumination = LightAwarenessGI;
 	sceneCaptureComponents->CaptureSource = SCS_FinalColorLDR;
 	sceneCaptureComponents->TextureTarget = RenderTarget;
 	sceneCaptureComponents->bAlwaysPersistRenderingState = true;
 	sceneCaptureComponents->TextureTarget->SizeX = 16; // 16 Min Effective Shadow Catcher size for any condition
 	sceneCaptureComponents->TextureTarget->SizeY = 16; // 16 Min Effective Shadow Catcher size for any condition
-
-
+	
 	// Lighting and shadows ON, everything at post-process OFF
 	auto& F = sceneCaptureComponents->ShowFlags;
 	F.SetLighting(true);
@@ -322,7 +394,7 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 						 : EDynamicGlobalIlluminationMethod::None;
 
 	sceneCaptureComponents->bCaptureEveryFrame = false;
-	sceneCaptureComponents->bConsiderUnrenderedOpaquePixelAsFullyTranslucent = true;
+	sceneCaptureComponents->bConsiderUnrenderedOpaquePixelAsFullyTranslucent = false;
 
 	// Cleanup RenderTarget
 	check(RenderTarget != nullptr);
@@ -337,13 +409,11 @@ void ULightAwarenessComponent::SetupSceneCaptureSettings(USceneCaptureComponent2
 	{
 		// Scene Capture under 5.2 Orthographic is problematic, generally not rendering shadows at all as a known issue.
 		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Perspective;
-		auto CompensatedLoc = Location/2;
-		sceneCaptureComponents->SetRelativeLocation(CompensatedLoc);
+		sceneCaptureComponents->FOVAngle = 60.0f;
 	}
 	else
 	{
 		sceneCaptureComponents->ProjectionType = ECameraProjectionMode::Orthographic;
-		sceneCaptureComponents->SetRelativeLocation(Location);
 	}
 	
 #if WITH_EDITORONLY_DATA
@@ -441,29 +511,29 @@ void ULightAwarenessComponent::ProcessGPU()
 	if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Average)
 	{
 		// schedule on render thread
-		if (TopReadback.IsValid())
+		if (Impl->TopReadback.IsValid())
 		{
 			int32 PixelCount = sceneCaptureComponentTop && sceneCaptureComponentTop->TextureTarget
 				? sceneCaptureComponentTop->TextureTarget->SizeX * sceneCaptureComponentTop->TextureTarget->SizeY
 				: 0;
-			EnqueueConsumeAvgIfReady(TopReadback, TopMailbox, PixelCount);
+			EnqueueConsumeAvgIfReady(Impl->TopReadback, Impl->TopMailbox, PixelCount);
 		}
-		if (BottomReadback.IsValid())
+		if (Impl->BottomReadback.IsValid())
 		{
 			int32 PixelCount = sceneCaptureComponentBottom && sceneCaptureComponentBottom->TextureTarget
 				? sceneCaptureComponentBottom->TextureTarget->SizeX * sceneCaptureComponentBottom->TextureTarget->SizeY
 				: 0;
-			EnqueueConsumeAvgIfReady(BottomReadback, BottomMailbox, PixelCount);
+			EnqueueConsumeAvgIfReady(Impl->BottomReadback, Impl->BottomMailbox, PixelCount);
 		}
 	}
 	else // Brightest
 	{
 		// schedule on render thread
-		if (TopReadback.IsValid())
-			EnqueueConsumeMaxIfReady(TopReadback, TopMailbox);
+		if (Impl->TopReadback.IsValid())
+			EnqueueConsumeMaxIfReady(Impl->TopReadback, Impl->TopMailbox);
 
-		if (BottomReadback.IsValid())
-			EnqueueConsumeMaxIfReady(BottomReadback, BottomMailbox);
+		if (Impl->BottomReadback.IsValid())
+			EnqueueConsumeMaxIfReady(Impl->BottomReadback, Impl->BottomMailbox);
 	}
 
 	// Consume 
@@ -543,11 +613,11 @@ void ULightAwarenessComponent::KickGpuReductions()
 		{
 			if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Average)
 			{
-				EnqueueAvgLuminanceReduce(sceneCaptureComponentTop->TextureTarget, TopReadback);
+				EnqueueAvgLuminanceReduce(sceneCaptureComponentTop->TextureTarget, Impl->TopReadback);
 			}
 			else
 			{
-				EnqueueMaxLuminanceReduce(sceneCaptureComponentTop->TextureTarget, TopReadback);
+				EnqueueMaxLuminanceReduce(sceneCaptureComponentTop->TextureTarget, Impl->TopReadback);
 			}
 			sceneCaptureComponentTop->CaptureSceneDeferred();
 		}
@@ -558,11 +628,11 @@ void ULightAwarenessComponent::KickGpuReductions()
 		{
 			if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Average)
 			{
-				EnqueueAvgLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, BottomReadback);
+				EnqueueAvgLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, Impl->BottomReadback);
 			}
 			else
 			{
-				EnqueueMaxLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, BottomReadback);
+				EnqueueMaxLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, Impl->BottomReadback);
 			}
 			sceneCaptureComponentBottom->CaptureSceneDeferred();
 		}
@@ -573,11 +643,11 @@ void ULightAwarenessComponent::KickGpuReductions()
 		{
 			if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Average)
 			{
-				EnqueueAvgLuminanceReduce(sceneCaptureComponentTop->TextureTarget, TopReadback);
+				EnqueueAvgLuminanceReduce(sceneCaptureComponentTop->TextureTarget, Impl->TopReadback);
 			}
 			else
 			{
-				EnqueueMaxLuminanceReduce(sceneCaptureComponentTop->TextureTarget, TopReadback);
+				EnqueueMaxLuminanceReduce(sceneCaptureComponentTop->TextureTarget, Impl->TopReadback);
 			}
 			sceneCaptureComponentTop->CaptureSceneDeferred();
 		}
@@ -585,11 +655,11 @@ void ULightAwarenessComponent::KickGpuReductions()
 		{
 			if (LightAwarenessCalculationMethod == ELightAwarenessCalculationMethod::Average)
 			{
-				EnqueueAvgLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, BottomReadback);
+				EnqueueAvgLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, Impl->BottomReadback);
 			}
 			else
 			{
-				EnqueueMaxLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, BottomReadback);
+				EnqueueMaxLuminanceReduce(sceneCaptureComponentBottom->TextureTarget, Impl->BottomReadback);
 			}
 			sceneCaptureComponentBottom->CaptureSceneDeferred();
 		}
@@ -604,20 +674,20 @@ bool ULightAwarenessComponent::ConsumeGpuReductions(float& OutLightValue)
 	float LTop = 0.f, LBottom = 0.f;
 
 	// mailbox check (non-blocking)
-	const int32 TopEpoch = TopMailbox.Epoch.Load();
-	if (TopEpoch != TopEpochSeen)
+	const int32 TopEpoch = Impl->TopMailbox.Epoch.Load();
+	if (TopEpoch != Impl->TopEpochSeen)
 	{
-		TopEpochSeen = TopEpoch;
-		const uint32 Bits = TopMailbox.Bits.Load();
+		Impl->TopEpochSeen = TopEpoch;
+		const uint32 Bits = Impl->TopMailbox.Bits.Load();
 		LTop = *reinterpret_cast<const float*>(&Bits);
 		bGotTop = true;
 	}
 
-	const int32 BottomEpoch = BottomMailbox.Epoch.Load();
-	if (BottomEpoch != BottomEpochSeen)
+	const int32 BottomEpoch = Impl->BottomMailbox.Epoch.Load();
+	if (BottomEpoch != Impl->BottomEpochSeen)
 	{
-		BottomEpochSeen = BottomEpoch;
-		const uint32 Bits = BottomMailbox.Bits.Load();
+		Impl->BottomEpochSeen = BottomEpoch;
+		const uint32 Bits = Impl->BottomMailbox.Bits.Load();
 		LBottom = *reinterpret_cast<const float*>(&Bits);
 		bGotBottom = true;
 	}
@@ -681,6 +751,9 @@ void ULightAwarenessComponent::UpdateSettings() const
 		LightAwarenessMesh->SetRelativeScale3D(FVector (1,1,1) * LightAwarenessDetectorScale);
 		LightAwarenessMesh->SetRelativeLocation(FVector (1,1,1) * LightAwarenessDetectorOffset);
 	}
+
+	UpdateSceneCaptureLocations();
+
 	if (LightAwarenessMaterialDynamic)
 	{
 		LightAwarenessMaterialDynamic->SetScalarParameterValue("MatSensitivity", LightAwarenessMaterialSensitivity);
